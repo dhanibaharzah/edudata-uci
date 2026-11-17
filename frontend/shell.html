@@ -14,9 +14,11 @@
 </style>
 </head>
 <body>
+<div class="nav-overlay" id="nav-overlay" hidden></div>
 <div class="app">
-  <aside class="sidebar">
+  <aside class="sidebar" id="app-sidebar">
     <div class="brand">
+      <button type="button" class="nav-close" id="nav-close" aria-label="Tutup menu">&times;</button>
       <h1>📊 Dashboard Pendidikan</h1>
       <p>Indonesia · Live (API Indonesia) · UCI</p>
       <div class="live-status" id="live-status">Menghubungkan…</div>
@@ -46,9 +48,13 @@
 
   <div class="main">
     <header class="topbar">
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Buka menu" aria-controls="app-sidebar" aria-expanded="false">
+        <span class="nav-toggle-bars" aria-hidden="true"></span>
+      </button>
       <div class="topbar-title" id="topbar-title">Beranda</div>
       <div class="filter-indicator" id="filter-indicator"></div>
-      <div class="filter-bar">
+      <button type="button" class="btn filter-toggle" id="filter-toggle" aria-expanded="false" aria-controls="filter-bar">Filter</button>
+      <div class="filter-bar" id="filter-bar">
         <select id="filter-provinsi" aria-label="Provinsi"><option value="all">Semua Provinsi</option></select>
         <select id="filter-kabupaten" aria-label="Kabupaten/Kota" disabled><option value="all">Semua Kab/Kota</option></select>
         <select id="filter-jenjang" aria-label="Jenjang"><option value="all">Semua Jenjang</option><option value="SD">SD</option><option value="SMP">SMP</option><option value="SMA">SMA</option><option value="SMK">SMK</option><option value="SLB">SLB</option></select>

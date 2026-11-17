@@ -49,7 +49,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .grid-4 { grid-template-columns: repeat(4, 1fr); }
 .grid-6 { grid-template-columns: repeat(6, 1fr); }
 @media (max-width: 1100px) { .grid-6 { grid-template-columns: repeat(3, 1fr); } .grid-4 { grid-template-columns: repeat(2, 1fr); } .grid-3 { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 768px) { .sidebar { width: 60px; } .sidebar .brand, .nav-item span, .nav-group-label { display: none; } .main { margin-left: 60px; } .grid-2, .grid-3, .grid-4, .grid-6 { grid-template-columns: 1fr; } .filter-indicator { display: none !important; } }
 .kpi { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; position: relative; overflow: hidden; }
 .kpi-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; }
 .kpi-value { font-size: 26px; font-weight: 700; margin: 6px 0 2px; line-height: 1.1; }
@@ -80,7 +79,7 @@ th { text-align: left; padding: 8px 10px; border-bottom: 2px solid #e2e8f0; colo
 td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; }
 tr:hover td { background: #f8fafc; }
 tr.highlighted td { background: #dbeafe; font-weight: 500; }
-.table-wrap { max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; }
+.table-wrap { max-height: 400px; overflow: auto; -webkit-overflow-scrolling: touch; border: 1px solid #e2e8f0; border-radius: 8px; }
 .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
 .badge-green { background: #d1fae5; color: #065f46; }
 .badge-yellow { background: #fef3c7; color: #92400e; }
@@ -168,16 +167,133 @@ tr.highlighted td { background: #dbeafe; font-weight: 500; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .live-status { font-size: 11px; color: #34d399; margin-top: 6px; }
 .filter-bar select:disabled { opacity: 0.5; }
-#ts-box { display: none; position: fixed; right: 16px; bottom: 16px; z-index: 1000; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; box-shadow: 0 6px 24px rgba(15,23,42,.15); font-size: 11px; color: #475569; }
+#ts-box { display: none; position: fixed; right: 16px; bottom: 16px; z-index: 60; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; box-shadow: 0 6px 24px rgba(15,23,42,.15); font-size: 11px; color: #475569; }
 .sidebar-foot { padding: 16px 20px; font-size: 10px; color: #475569; border-top: 1px solid #1e293b; margin-top: 12px; line-height: 1.6; }
 .sidebar-foot a { color: #94a3b8; }
+
+/* ================= Navigasi & kontrol (desktop: tersembunyi) ================= */
+.nav-toggle, .nav-close, .filter-toggle, .nav-overlay, .sk-cards { display: none; }
+.nav-toggle { width: 44px; height: 44px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 0; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; }
+.nav-toggle:hover, .nav-close:hover { background: #f8fafc; }
+.nav-toggle-bars, .nav-toggle-bars::before, .nav-toggle-bars::after { display: block; width: 18px; height: 2px; background: #0f172a; border-radius: 1px; position: relative; transition: transform 0.2s, opacity 0.2s; }
+.nav-toggle-bars::before, .nav-toggle-bars::after { content: ""; position: absolute; left: 0; }
+.nav-toggle-bars::before { top: -6px; }
+.nav-toggle-bars::after { top: 6px; }
+body.nav-open .nav-toggle-bars { background: transparent; }
+body.nav-open .nav-toggle-bars::before { top: 0; transform: rotate(45deg); }
+body.nav-open .nav-toggle-bars::after { top: 0; transform: rotate(-45deg); }
+.nav-close { position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; background: transparent; color: #e2e8f0; font-size: 28px; line-height: 1; cursor: pointer; border-radius: 8px; }
+.nav-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 90; }
+.filter-toggle { min-height: 44px; min-width: 44px; padding: 8px 12px; font-weight: 600; flex-shrink: 0; }
+.filter-toggle.is-active { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+body.filters-open .filter-toggle { background: #1e40af; color: #fff; border-color: #1e40af; }
+
+/* ================= Mobile / tablet (≤768px) ================= */
+@media (max-width: 768px) {
+  html, body { overflow-x: hidden; }
+  .nav-toggle { display: inline-flex; }
+  .nav-close { display: block; }
+  .nav-overlay { display: none; }
+  body.nav-open { overflow: hidden; }
+  body.nav-open .nav-overlay { display: block; }
+
+  .sidebar {
+    width: min(320px, 88vw);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    z-index: 100;
+    padding-top: 12px;
+  }
+  body.nav-open .sidebar { transform: translateX(0); box-shadow: 8px 0 32px rgba(15, 23, 42, 0.35); }
+  .sidebar .brand { position: relative; padding: 8px 52px 16px 20px; display: block; }
+  .sidebar .brand h1, .sidebar .brand p, .nav-item span, .nav-group-label, .sidebar-foot { display: revert; }
+  .nav-item { min-height: 44px; padding: 12px 20px; }
+  .main { margin-left: 0; }
+
+  .topbar { padding: 8px 12px; gap: 8px; align-items: center; }
+  .topbar-title { font-size: 16px; margin-right: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .filter-indicator { display: none !important; }
+  .filter-bar { width: 100%; flex-wrap: wrap; }
+  .filter-bar select, .filter-bar .btn { flex: 1 1 150px; min-height: 44px; font-size: 16px; padding: 10px 12px; }
+  .content { padding: 16px 12px 24px; }
+  .page-title { font-size: 18px; }
+  .page-subtitle { font-size: 13px; margin-bottom: 14px; }
+
+  .grid-2 { grid-template-columns: 1fr; }
+  .grid-3, .grid-4, .grid-6 { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .kpi { padding: 12px; }
+  .kpi-value { font-size: 22px; }
+  .kpi-label { font-size: 10px; }
+
+  .bar-label { width: 76px; font-size: 11px; text-align: left; line-height: 1.25; white-space: normal; overflow: hidden; }
+  .bar-value { width: 44px; font-size: 11px; }
+  .bar-track { height: 16px; min-width: 0; }
+  .line-chart { height: auto; max-width: 100%; }
+  .donut-wrap { flex-wrap: wrap; justify-content: center; }
+  .heatmap-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+  .predefined-grid { grid-template-columns: 1fr; }
+  .predefined-card { min-height: 44px; }
+
+  .table-wrap th:first-child, .table-wrap td:first-child {
+    position: sticky; left: 0; z-index: 1; background: #fff; box-shadow: 1px 0 0 #e2e8f0;
+  }
+  .table-wrap thead th:first-child { z-index: 3; background: #f8fafc; top: 0; }
+
+  .search-box { flex-direction: column; align-items: stretch; }
+  .search-box input, .search-box select, .search-box button { width: 100%; min-height: 44px; font-size: 16px; }
+  .btn { min-height: 44px; padding: 10px 14px; }
+  .sk-toolbar { flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+  .sk-toolbar .flex { width: 100%; justify-content: space-between; }
+  .sk-table { display: none; }
+  .sk-cards { display: flex; flex-direction: column; gap: 8px; }
+  .sk-card {
+    display: block; width: 100%; text-align: left; background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 10px; padding: 12px 14px; min-height: 44px; cursor: pointer; font: inherit; color: inherit;
+  }
+  .sk-card:hover, .sk-card:focus { border-color: #3b82f6; background: #f8fafc; outline: none; }
+  .sk-card-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .sk-card-meta { font-size: 12px; color: #475569; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .sk-card-addr { font-size: 12px; color: #64748b; margin-top: 4px; }
+  .sk-lower { display: flex; flex-direction: column; }
+  .sk-detail-card { order: -1; }
+  #sk-map { height: 240px !important; width: 100%; max-width: 100%; }
+  .leaflet-container { width: 100% !important; max-width: 100%; }
+
+  .chat-container { height: calc(100dvh - 200px); min-height: 320px; }
+  .content:has(.page.active .chat-container) { padding-bottom: 0; }
+  .chat-input-wrap {
+    position: sticky; bottom: 0; z-index: 5; background: #f1f5f9;
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); margin: 0 -0px;
+  }
+  .chat-input-wrap textarea { min-height: 64px; font-size: 16px; }
+  .chat-input-wrap button { min-height: 44px; font-size: 14px; }
+
+  #ts-box {
+    left: 12px; right: 12px; bottom: 12px; max-width: calc(100vw - 24px);
+  }
+  body.nav-open #ts-box { visibility: hidden; pointer-events: none; }
+}
+
+@media (max-width: 640px) {
+  .filter-toggle { display: inline-flex; }
+  .filter-bar { display: none; }
+  body.filters-open .filter-bar { display: flex; }
+  .filter-bar select, .filter-bar .btn { flex: 1 1 100%; }
+  .chat-container { height: calc(100dvh - 160px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar, .nav-toggle-bars, .nav-toggle-bars::before, .nav-toggle-bars::after { transition: none; }
+}
 
 </style>
 </head>
 <body>
+<div class="nav-overlay" id="nav-overlay" hidden></div>
 <div class="app">
-  <aside class="sidebar">
+  <aside class="sidebar" id="app-sidebar">
     <div class="brand">
+      <button type="button" class="nav-close" id="nav-close" aria-label="Tutup menu">&times;</button>
       <h1>📊 Dashboard Pendidikan</h1>
       <p>Indonesia · Live (API Indonesia) · UCI</p>
       <div class="live-status" id="live-status">Menghubungkan…</div>
@@ -207,9 +323,13 @@ tr.highlighted td { background: #dbeafe; font-weight: 500; }
 
   <div class="main">
     <header class="topbar">
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Buka menu" aria-controls="app-sidebar" aria-expanded="false">
+        <span class="nav-toggle-bars" aria-hidden="true"></span>
+      </button>
       <div class="topbar-title" id="topbar-title">Beranda</div>
       <div class="filter-indicator" id="filter-indicator"></div>
-      <div class="filter-bar">
+      <button type="button" class="btn filter-toggle" id="filter-toggle" aria-expanded="false" aria-controls="filter-bar">Filter</button>
+      <div class="filter-bar" id="filter-bar">
         <select id="filter-provinsi" aria-label="Provinsi"><option value="all">Semua Provinsi</option></select>
         <select id="filter-kabupaten" aria-label="Kabupaten/Kota" disabled><option value="all">Semua Kab/Kota</option></select>
         <select id="filter-jenjang" aria-label="Jenjang"><option value="all">Semua Jenjang</option><option value="SD">SD</option><option value="SMP">SMP</option><option value="SMA">SMA</option><option value="SMK">SMK</option><option value="SLB">SLB</option></select>
@@ -1158,8 +1278,10 @@ function renderEarlyWarning() {
 
 /* ---------- Profil Sekolah (live: pencarian, paginasi, peta, detail) ---------- */
 const SK = { q: '', akred: 'all', page: 1, perPage: 100, data: null, meta: null, loading: false, error: null, key: '' };
+function sekolahPerPage() { return window.matchMedia('(max-width: 768px)').matches ? 20 : 100; }
 function sekolahQueryKey() { return JSON.stringify([sekolahFilter(), SK.q, SK.akred, SK.page]); }
 async function loadSekolahList() {
+  SK.perPage = sekolahPerPage();
   const key = sekolahQueryKey();
   if (SK.key === key && (SK.data || SK.loading)) return;
   SK.key = key; SK.loading = true; SK.error = null; renderSekolahResults();
@@ -1178,9 +1300,9 @@ function renderSekolah() {
       <button class="btn btn-primary" id="sk-go">Cari</button></div>
     <div id="sk-results">${loading()}</div>
   </div>
-  <div class="grid grid-2 mt-16">
-    <div class="card"><div class="card-title">Peta Sekolah (halaman ini) ${liveBadge()}</div><div id="sk-map" style="height:380px;border-radius:8px"></div><div class="note">Peta © OpenStreetMap contributors. Titik dari koordinat lat/lng tiap sekolah.</div></div>
-    <div class="card"><div class="card-title">Detail Sekolah ${liveBadge()}</div><div id="sk-detail"><div class="empty-state">Klik baris sekolah untuk melihat detail.</div></div></div>
+  <div class="grid grid-2 mt-16 sk-lower">
+    <div class="card sk-map-card"><div class="card-title">Peta Sekolah (halaman ini) ${liveBadge()}</div><div id="sk-map" style="height:380px;border-radius:8px"></div><div class="note">Peta © OpenStreetMap contributors. Titik dari koordinat lat/lng tiap sekolah.</div></div>
+    <div class="card sk-detail-card"><div class="card-title">Detail Sekolah ${liveBadge()}</div><div id="sk-detail"><div class="empty-state">Klik sekolah pada daftar untuk melihat detail.</div></div></div>
   </div>`;
 }
 function bindSekolah() {
@@ -1205,14 +1327,24 @@ function renderSekolahResults() {
   if (SK.error) { el.innerHTML = errBox(SK.error); return; }
   if (!SK.data) { el.innerHTML = ''; return; }
   const m = SK.meta || {};
-  el.innerHTML = `<div class="flex-between mb-16 text-sm"><div><b>${(m.total || 0).toLocaleString('id-ID')}</b> sekolah · ${regionLabel()}${STATE.jenjang !== 'all' ? ' · ' + STATE.jenjang : ''}${STATE.status !== 'all' ? ' · ' + STATE.status : ''}</div>
-    <div class="flex gap-8"><button class="btn" id="sk-prev" ${SK.page <= 1 ? 'disabled' : ''}>‹ Sebelumnya</button><span style="padding:6px">Hal. ${m.page || 1} / ${(m.total_pages || 1).toLocaleString('id-ID')}</span><button class="btn" id="sk-next" ${SK.page >= (m.total_pages || 1) ? 'disabled' : ''}>Berikutnya ›</button></div></div>
-    <div class="table-wrap"><table><thead><tr><th>NPSN</th><th>Nama</th><th>Jenjang</th><th>Status</th><th>Akreditasi</th><th>Alamat</th></tr></thead><tbody>
-    ${SK.data.map(s => `<tr class="sk-row" data-npsn="${esc(s.npsn)}" style="cursor:pointer"><td>${esc(s.npsn)}</td><td>${esc(s.name)}</td><td>${esc(s.jenis)}</td><td>${esc(s.status)}</td><td><span class="badge ${s.accreditation === 'A' ? 'badge-green' : s.accreditation ? 'badge-yellow' : 'badge-gray'}">${esc(s.accreditation || '—')}</span></td><td class="text-sm">${esc(s.address || '')}</td></tr>`).join('') || '<tr><td colspan="6" class="empty-state">Tidak ada hasil</td></tr>'}
-    </tbody></table></div>${srcNote(schoolSrc())}`;
+  const badge = (s) => `<span class="badge ${s.accreditation === 'A' ? 'badge-green' : s.accreditation ? 'badge-yellow' : 'badge-gray'}">${esc(s.accreditation || '—')}</span>`;
+  const rows = SK.data.map(s => `<tr class="sk-row" data-npsn="${esc(s.npsn)}" style="cursor:pointer"><td>${esc(s.npsn)}</td><td>${esc(s.name)}</td><td>${esc(s.jenis)}</td><td>${esc(s.status)}</td><td>${badge(s)}</td><td class="text-sm">${esc(s.address || '')}</td></tr>`).join('') || '<tr><td colspan="6" class="empty-state">Tidak ada hasil</td></tr>';
+  const cards = SK.data.map(s => `<button type="button" class="sk-card sk-row" data-npsn="${esc(s.npsn)}"><div class="sk-card-title">${esc(s.name)}</div><div class="sk-card-meta"><span>NPSN ${esc(s.npsn)}</span><span>${esc(s.jenis)}</span><span>${esc(s.status)}</span>${badge(s)}</div>${s.address ? `<div class="sk-card-addr">${esc(s.address)}</div>` : ''}</button>`).join('') || '<div class="empty-state">Tidak ada hasil</div>';
+  el.innerHTML = `<div class="flex-between mb-16 text-sm sk-toolbar"><div><b>${(m.total || 0).toLocaleString('id-ID')}</b> sekolah · ${regionLabel()}${STATE.jenjang !== 'all' ? ' · ' + STATE.jenjang : ''}${STATE.status !== 'all' ? ' · ' + STATE.status : ''}</div>
+    <div class="flex gap-8"><button class="btn" id="sk-prev" ${SK.page <= 1 ? 'disabled' : ''}>‹ Sebelumnya</button><span style="padding:10px 0">Hal. ${m.page || 1} / ${(m.total_pages || 1).toLocaleString('id-ID')}</span><button class="btn" id="sk-next" ${SK.page >= (m.total_pages || 1) ? 'disabled' : ''}>Berikutnya ›</button></div></div>
+    <div class="table-wrap sk-table"><table><thead><tr><th>NPSN</th><th>Nama</th><th>Jenjang</th><th>Status</th><th>Akreditasi</th><th>Alamat</th></tr></thead><tbody>
+    ${rows}
+    </tbody></table></div>
+    <div class="sk-cards">${cards}</div>${srcNote(schoolSrc())}`;
   document.getElementById('sk-prev').onclick = () => { SK.page--; loadSekolahList(); };
   document.getElementById('sk-next').onclick = () => { SK.page++; loadSekolahList(); };
-  el.querySelectorAll('.sk-row').forEach(tr => tr.onclick = () => showSchoolDetail(tr.dataset.npsn));
+  el.querySelectorAll('.sk-row').forEach(n => n.onclick = () => {
+    showSchoolDetail(n.dataset.npsn);
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      const d = document.querySelector('.sk-detail-card');
+      if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
   if (MAP && MAPLAYER) {
     MAPLAYER.clearLayers(); const pts = [];
     SK.data.forEach(s => { if (s.lat && s.lng) { pts.push([s.lat, s.lng]); L.circleMarker([s.lat, s.lng], { radius: 5, color: s.accreditation === 'A' ? '#059669' : '#1e40af', weight: 1, fillOpacity: 0.7 }).bindPopup(`<b>${esc(s.name)}</b><br>NPSN ${esc(s.npsn)} · ${esc(s.jenis)} ${esc(s.status)}<br>Akreditasi: ${esc(s.accreditation || '—')}`).addTo(MAPLAYER); } });
@@ -1320,8 +1452,16 @@ function updateFilterIndicator() {
   if (STATE.provinsi !== 'all') parts.push(regionLabel());
   if (STATE.jenjang !== 'all') parts.push(STATE.jenjang);
   if (STATE.status !== 'all') parts.push(STATE.status);
-  const el = document.getElementById('filter-indicator'); if (!el) return;
-  if (!parts.length) el.style.display = 'none'; else { el.style.display = 'inline-flex'; el.textContent = '🔍 ' + parts.join(' · '); }
+  const el = document.getElementById('filter-indicator');
+  if (el) {
+    if (!parts.length) el.style.display = 'none';
+    else { el.style.display = 'inline-flex'; el.textContent = '🔍 ' + parts.join(' · '); }
+  }
+  const btn = document.getElementById('filter-toggle');
+  if (btn) {
+    btn.textContent = parts.length ? 'Filter (' + parts.length + ')' : 'Filter';
+    btn.classList.toggle('is-active', parts.length > 0);
+  }
 }
 async function fillKabupaten() {
   const sel = document.getElementById('filter-kabupaten');
@@ -1362,10 +1502,43 @@ function showPage(id) {
   if (id === 'analisis-predefined' && !document.getElementById('predefined-chat')) renderPredefined();
   if (id === 'analisis-lanjut' && !document.getElementById('analisis-lanjut-chat')) renderAnalisisLanjut();
   if (location.hash.slice(1) !== id) history.replaceState(null, '', '#' + id);
+  closeNav();
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function isMobileNav() { return window.matchMedia('(max-width: 768px)').matches; }
+function closeNav() {
+  document.body.classList.remove('nav-open');
+  const btn = document.getElementById('nav-toggle');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+  const ov = document.getElementById('nav-overlay');
+  if (ov) ov.hidden = true;
+}
+function openNav() {
+  document.body.classList.add('nav-open');
+  const btn = document.getElementById('nav-toggle');
+  if (btn) btn.setAttribute('aria-expanded', 'true');
+  const ov = document.getElementById('nav-overlay');
+  if (ov) ov.hidden = false;
+}
+function toggleNav() { document.body.classList.contains('nav-open') ? closeNav() : openNav(); }
+function bindMobileChrome() {
+  const toggle = document.getElementById('nav-toggle');
+  const closeBtn = document.getElementById('nav-close');
+  const overlay = document.getElementById('nav-overlay');
+  const filterBtn = document.getElementById('filter-toggle');
+  if (toggle) toggle.addEventListener('click', toggleNav);
+  if (closeBtn) closeBtn.addEventListener('click', closeNav);
+  if (overlay) overlay.addEventListener('click', closeNav);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeNav(); document.body.classList.remove('filters-open'); if (filterBtn) filterBtn.setAttribute('aria-expanded', 'false'); } });
+  window.addEventListener('resize', () => { if (!isMobileNav()) closeNav(); });
+  if (filterBtn) filterBtn.addEventListener('click', () => {
+    const open = document.body.classList.toggle('filters-open');
+    filterBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
 }
 document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('.nav-item').forEach(nav => nav.addEventListener('click', () => showPage(nav.dataset.page)));
+  bindMobileChrome();
   bindFilters();
   renderAllPages();
   const initial = location.hash.slice(1);

@@ -1,7 +1,9 @@
 /* ---------- Profil Sekolah (live: pencarian, paginasi, peta, detail) ---------- */
 const SK = { q: '', akred: 'all', page: 1, perPage: 100, data: null, meta: null, loading: false, error: null, key: '' };
+function sekolahPerPage() { return window.matchMedia('(max-width: 768px)').matches ? 20 : 100; }
 function sekolahQueryKey() { return JSON.stringify([sekolahFilter(), SK.q, SK.akred, SK.page]); }
 async function loadSekolahList() {
+  SK.perPage = sekolahPerPage();
   const key = sekolahQueryKey();
   if (SK.key === key && (SK.data || SK.loading)) return;
   SK.key = key; SK.loading = true; SK.error = null; renderSekolahResults();
@@ -20,9 +22,9 @@ function renderSekolah() {
       <button class="btn btn-primary" id="sk-go">Cari</button></div>
     <div id="sk-results">${loading()}</div>
   </div>
-  <div class="grid grid-2 mt-16">
-    <div class="card"><div class="card-title">Peta Sekolah (halaman ini) ${liveBadge()}</div><div id="sk-map" style="height:380px;border-radius:8px"></div><div class="note">Peta © OpenStreetMap contributors. Titik dari koordinat lat/lng tiap sekolah.</div></div>
-    <div class="card"><div class="card-title">Detail Sekolah ${liveBadge()}</div><div id="sk-detail"><div class="empty-state">Klik baris sekolah untuk melihat detail.</div></div></div>
+  <div class="grid grid-2 mt-16 sk-lower">
+    <div class="card sk-map-card"><div class="card-title">Peta Sekolah (halaman ini) ${liveBadge()}</div><div id="sk-map" style="height:380px;border-radius:8px"></div><div class="note">Peta © OpenStreetMap contributors. Titik dari koordinat lat/lng tiap sekolah.</div></div>
+    <div class="card sk-detail-card"><div class="card-title">Detail Sekolah ${liveBadge()}</div><div id="sk-detail"><div class="empty-state">Klik sekolah pada daftar untuk melihat detail.</div></div></div>
   </div>`;
 }
 function bindSekolah() {
@@ -47,14 +49,24 @@ function renderSekolahResults() {
   if (SK.error) { el.innerHTML = errBox(SK.error); return; }
   if (!SK.data) { el.innerHTML = ''; return; }
   const m = SK.meta || {};
-  el.innerHTML = `<div class="flex-between mb-16 text-sm"><div><b>${(m.total || 0).toLocaleString('id-ID')}</b> sekolah · ${regionLabel()}${STATE.jenjang !== 'all' ? ' · ' + STATE.jenjang : ''}${STATE.status !== 'all' ? ' · ' + STATE.status : ''}</div>
-    <div class="flex gap-8"><button class="btn" id="sk-prev" ${SK.page <= 1 ? 'disabled' : ''}>‹ Sebelumnya</button><span style="padding:6px">Hal. ${m.page || 1} / ${(m.total_pages || 1).toLocaleString('id-ID')}</span><button class="btn" id="sk-next" ${SK.page >= (m.total_pages || 1) ? 'disabled' : ''}>Berikutnya ›</button></div></div>
-    <div class="table-wrap"><table><thead><tr><th>NPSN</th><th>Nama</th><th>Jenjang</th><th>Status</th><th>Akreditasi</th><th>Alamat</th></tr></thead><tbody>
-    ${SK.data.map(s => `<tr class="sk-row" data-npsn="${esc(s.npsn)}" style="cursor:pointer"><td>${esc(s.npsn)}</td><td>${esc(s.name)}</td><td>${esc(s.jenis)}</td><td>${esc(s.status)}</td><td><span class="badge ${s.accreditation === 'A' ? 'badge-green' : s.accreditation ? 'badge-yellow' : 'badge-gray'}">${esc(s.accreditation || '—')}</span></td><td class="text-sm">${esc(s.address || '')}</td></tr>`).join('') || '<tr><td colspan="6" class="empty-state">Tidak ada hasil</td></tr>'}
-    </tbody></table></div>${srcNote(schoolSrc())}`;
+  const badge = (s) => `<span class="badge ${s.accreditation === 'A' ? 'badge-green' : s.accreditation ? 'badge-yellow' : 'badge-gray'}">${esc(s.accreditation || '—')}</span>`;
+  const rows = SK.data.map(s => `<tr class="sk-row" data-npsn="${esc(s.npsn)}" style="cursor:pointer"><td>${esc(s.npsn)}</td><td>${esc(s.name)}</td><td>${esc(s.jenis)}</td><td>${esc(s.status)}</td><td>${badge(s)}</td><td class="text-sm">${esc(s.address || '')}</td></tr>`).join('') || '<tr><td colspan="6" class="empty-state">Tidak ada hasil</td></tr>';
+  const cards = SK.data.map(s => `<button type="button" class="sk-card sk-row" data-npsn="${esc(s.npsn)}"><div class="sk-card-title">${esc(s.name)}</div><div class="sk-card-meta"><span>NPSN ${esc(s.npsn)}</span><span>${esc(s.jenis)}</span><span>${esc(s.status)}</span>${badge(s)}</div>${s.address ? `<div class="sk-card-addr">${esc(s.address)}</div>` : ''}</button>`).join('') || '<div class="empty-state">Tidak ada hasil</div>';
+  el.innerHTML = `<div class="flex-between mb-16 text-sm sk-toolbar"><div><b>${(m.total || 0).toLocaleString('id-ID')}</b> sekolah · ${regionLabel()}${STATE.jenjang !== 'all' ? ' · ' + STATE.jenjang : ''}${STATE.status !== 'all' ? ' · ' + STATE.status : ''}</div>
+    <div class="flex gap-8"><button class="btn" id="sk-prev" ${SK.page <= 1 ? 'disabled' : ''}>‹ Sebelumnya</button><span style="padding:10px 0">Hal. ${m.page || 1} / ${(m.total_pages || 1).toLocaleString('id-ID')}</span><button class="btn" id="sk-next" ${SK.page >= (m.total_pages || 1) ? 'disabled' : ''}>Berikutnya ›</button></div></div>
+    <div class="table-wrap sk-table"><table><thead><tr><th>NPSN</th><th>Nama</th><th>Jenjang</th><th>Status</th><th>Akreditasi</th><th>Alamat</th></tr></thead><tbody>
+    ${rows}
+    </tbody></table></div>
+    <div class="sk-cards">${cards}</div>${srcNote(schoolSrc())}`;
   document.getElementById('sk-prev').onclick = () => { SK.page--; loadSekolahList(); };
   document.getElementById('sk-next').onclick = () => { SK.page++; loadSekolahList(); };
-  el.querySelectorAll('.sk-row').forEach(tr => tr.onclick = () => showSchoolDetail(tr.dataset.npsn));
+  el.querySelectorAll('.sk-row').forEach(n => n.onclick = () => {
+    showSchoolDetail(n.dataset.npsn);
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      const d = document.querySelector('.sk-detail-card');
+      if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
   if (MAP && MAPLAYER) {
     MAPLAYER.clearLayers(); const pts = [];
     SK.data.forEach(s => { if (s.lat && s.lng) { pts.push([s.lat, s.lng]); L.circleMarker([s.lat, s.lng], { radius: 5, color: s.accreditation === 'A' ? '#059669' : '#1e40af', weight: 1, fillOpacity: 0.7 }).bindPopup(`<b>${esc(s.name)}</b><br>NPSN ${esc(s.npsn)} · ${esc(s.jenis)} ${esc(s.status)}<br>Akreditasi: ${esc(s.accreditation || '—')}`).addTo(MAPLAYER); } });
