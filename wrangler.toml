@@ -1,0 +1,38 @@
+# Konfigurasi Wrangler untuk EduData UCI Live.
+# account_id sengaja TIDAK ditulis di sini (repo publik). Set lewat env:
+#   export CLOUDFLARE_ACCOUNT_ID=<id akun Anda>
+name = "edudata-uci"
+main = "src/worker.js"
+compatibility_date = "2026-11-17"
+workers_dev = true
+preview_urls = false
+
+rules = [{ type = "Text", globs = ["**/*.html"], fallthrough = false }]
+
+[vars]
+DAILY_UPSTREAM_LIMIT = "300"
+# Hostname frontend yang diizinkan untuk token Turnstile (pisahkan dengan koma)
+TURNSTILE_HOSTNAMES = "edudata-uci.orbitkreasiindonesia.workers.dev"
+# Site key Turnstile bersifat publik (boleh ada di repo). Kosongkan untuk menonaktifkan Turnstile.
+TURNSTILE_SITEKEY = "0x4AAAAAAGEmRV1LZ51Y2OEv"
+
+# Cache respons API Indonesia. Buat namespace: npx wrangler kv namespace create CACHE
+[[kv_namespaces]]
+binding = "CACHE"
+id = "GANTI_DENGAN_ID_KV_NAMESPACE"
+
+# Rate limit per IP (Workers Rate Limiting binding)
+[[ratelimits]]
+name = "RL"
+namespace_id = "1001"
+simple = { limit = 300, period = 60 }
+
+[observability]
+enabled = true
+[observability.traces]
+enabled = true
+
+# Secret (JANGAN ditulis di file ini):
+#   npx wrangler secret put APIINDONESIA_API_KEY
+#   npx wrangler secret put TURNSTILE_SECRET
+#   npx wrangler secret put SESSION_HMAC_KEY

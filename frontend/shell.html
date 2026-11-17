@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Pendidikan Indonesia — Live (API Indonesia) · UCI</title>
+<meta name="description" content="Dashboard pendidikan Indonesia dengan data live dari API Indonesia (sekolah, perguruan tinggi, beasiswa, wilayah). Prototipe UCI School of Information.">
+<meta name="turnstile-sitekey" content="__TURNSTILE_SITEKEY__">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://js.puter.com/v2/"></script>
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <h1>📊 Dashboard Pendidikan</h1>
+      <p>Indonesia · Live (API Indonesia) · UCI</p>
+      <div class="live-status" id="live-status">Menghubungkan…</div>
+    </div>
+    <div class="nav-group-label">Ringkasan</div>
+    <div class="nav-item active" data-page="beranda"><span class="nav-icon">🏠</span><span>Beranda</span></div>
+    <div class="nav-group-label">Data &amp; Mutu</div>
+    <div class="nav-item" data-page="partisipasi"><span class="nav-icon">👥</span><span>Partisipasi</span></div>
+    <div class="nav-item" data-page="mutu"><span class="nav-icon">📚</span><span>Mutu</span></div>
+    <div class="nav-item" data-page="pemerataan"><span class="nav-icon">⚖️</span><span>Pemerataan</span></div>
+    <div class="nav-item" data-page="guru"><span class="nav-icon">👨‍🏫</span><span>Guru &amp; Tendik</span></div>
+    <div class="nav-group-label">Konteks</div>
+    <div class="nav-item" data-page="pendanaan"><span class="nav-icon">💰</span><span>Pendanaan</span></div>
+    <div class="nav-item" data-page="ats"><span class="nav-icon">⚠️</span><span>ATS</span></div>
+    <div class="nav-item" data-page="pisa"><span class="nav-icon">🌏</span><span>PISA</span></div>
+    <div class="nav-item" data-page="dikti"><span class="nav-icon">🎓</span><span>Pendidikan Tinggi</span></div>
+    <div class="nav-group-label">Aksi</div>
+    <div class="nav-item" data-page="earlywarning"><span class="nav-icon">🚨</span><span>Early Warning</span></div>
+    <div class="nav-item" data-page="sekolah"><span class="nav-icon">🏫</span><span>Profil Sekolah</span></div>
+    <div class="nav-item" data-page="explorer"><span class="nav-icon">🗄️</span><span>Data Explorer</span></div>
+    <div class="nav-group-label">Analisis</div>
+    <div class="nav-item" data-page="analisis-data"><span class="nav-icon">🤖</span><span>Analisis Data</span></div>
+    <div class="nav-item" data-page="analisis-predefined"><span class="nav-icon">📋</span><span>Pre-defined Analysis</span></div>
+    <div class="nav-item" data-page="analisis-lanjut"><span class="nav-icon">🧠</span><span>Analisis Lanjut</span></div>
+    <div class="sidebar-foot">Data live: <a href="https://apiindonesia.id" target="_blank" rel="noopener">API Indonesia</a> (layanan independen, bukan API resmi pemerintah). Panel berlabel <b>CONTOH / DUMMY</b> belum live.<br>UCI · School of Information</div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-title" id="topbar-title">Beranda</div>
+      <div class="filter-indicator" id="filter-indicator"></div>
+      <div class="filter-bar">
+        <select id="filter-provinsi" aria-label="Provinsi"><option value="all">Semua Provinsi</option></select>
+        <select id="filter-kabupaten" aria-label="Kabupaten/Kota" disabled><option value="all">Semua Kab/Kota</option></select>
+        <select id="filter-jenjang" aria-label="Jenjang"><option value="all">Semua Jenjang</option><option value="SD">SD</option><option value="SMP">SMP</option><option value="SMA">SMA</option><option value="SMK">SMK</option><option value="SLB">SLB</option></select>
+        <select id="filter-status" aria-label="Status"><option value="all">Negeri &amp; Swasta</option><option value="Negeri">Negeri</option><option value="Swasta">Swasta</option></select>
+        <button class="btn" id="btn-reset">↻ Reset</button>
+        <button class="btn btn-primary" id="btn-export">⬇ Ekspor</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <section class="page active" id="page-beranda"></section>
+      <section class="page" id="page-partisipasi"></section>
+      <section class="page" id="page-mutu"></section>
+      <section class="page" id="page-pemerataan"></section>
+      <section class="page" id="page-guru"></section>
+      <section class="page" id="page-pendanaan"></section>
+      <section class="page" id="page-ats"></section>
+      <section class="page" id="page-pisa"></section>
+      <section class="page" id="page-dikti"></section>
+      <section class="page" id="page-earlywarning"></section>
+      <section class="page" id="page-sekolah"></section>
+      <section class="page" id="page-explorer"></section>
+      <section class="page" id="page-analisis-data"></section>
+      <section class="page" id="page-analisis-predefined"></section>
+      <section class="page" id="page-analisis-lanjut"></section>
+    </main>
+  </div>
+</div>
+<div id="ts-box">Verifikasi keamanan (Cloudflare Turnstile)…<div id="ts-widget"></div></div>
+<script>
+/*__JS__*/
+</script>
+</body>
+</html>

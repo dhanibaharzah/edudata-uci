@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Pendidikan Indonesia — Live (API Indonesia) · UCI</title>
+<meta name="description" content="Dashboard pendidikan Indonesia dengan data live dari API Indonesia (sekolah, perguruan tinggi, beasiswa, wilayah). Prototipe UCI School of Information.">
+<meta name="turnstile-sitekey" content="__TURNSTILE_SITEKEY__">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://js.puter.com/v2/"></script>
+<style>
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f1f5f9; color: #0f172a; line-height: 1.5; font-size: 14px; }
+.app { display: flex; min-height: 100vh; }
+.sidebar { width: 240px; background: #0f172a; color: #cbd5e1; position: fixed; top: 0; bottom: 0; left: 0; overflow-y: auto; padding: 16px 0; z-index: 100; }
+.main { margin-left: 240px; flex: 1; min-width: 0; }
+.brand { padding: 0 20px 16px; border-bottom: 1px solid #1e293b; margin-bottom: 12px; }
+.brand h1 { font-size: 14px; color: #f1f5f9; font-weight: 700; }
+.brand p { font-size: 11px; color: #64748b; margin-top: 2px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; color: #cbd5e1; cursor: pointer; font-size: 13px; border-left: 3px solid transparent; transition: all 0.15s; }
+.nav-item:hover { background: #1e293b; color: #f1f5f9; }
+.nav-item.active { background: #1e293b; color: #fff; border-left-color: #3b82f6; }
+.nav-icon { width: 16px; text-align: center; opacity: 0.7; }
+.nav-item.active .nav-icon { opacity: 1; }
+.nav-group-label { padding: 14px 20px 6px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #475569; font-weight: 600; }
+.topbar { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 12px 24px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 50; flex-wrap: wrap; }
+.topbar-title { font-size: 16px; font-weight: 600; margin-right: auto; }
+.filter-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.filter-bar select { padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; font-size: 12px; color: #0f172a; cursor: pointer; }
+.btn { padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; font-size: 12px; cursor: pointer; color: #0f172a; }
+.btn:hover { background: #f8fafc; }
+.btn-primary { background: #1e40af; color: #fff; border-color: #1e40af; }
+.btn-primary:hover { background: #1e3a8a; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.filter-indicator { display: none; align-items: center; padding: 4px 10px; background: #dbeafe; color: #1e40af; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 4px; }
+.content { padding: 24px; max-width: 1400px; }
+.page { display: none; }
+.page.active { display: block; }
+.page-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.page-subtitle { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+.card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; }
+.card-title { font-size: 13px; font-weight: 600; margin-bottom: 12px; color: #334155; }
+.card-subtitle { font-size: 11px; color: #94a3b8; font-weight: 400; margin-left: 6px; }
+.grid { display: grid; gap: 16px; }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+.grid-6 { grid-template-columns: repeat(6, 1fr); }
+@media (max-width: 1100px) { .grid-6 { grid-template-columns: repeat(3, 1fr); } .grid-4 { grid-template-columns: repeat(2, 1fr); } .grid-3 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 768px) { .sidebar { width: 60px; } .sidebar .brand, .nav-item span, .nav-group-label { display: none; } .main { margin-left: 60px; } .grid-2, .grid-3, .grid-4, .grid-6 { grid-template-columns: 1fr; } .filter-indicator { display: none !important; } }
+.kpi { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; position: relative; overflow: hidden; }
+.kpi-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; }
+.kpi-value { font-size: 26px; font-weight: 700; margin: 6px 0 2px; line-height: 1.1; }
+.kpi-target { font-size: 11px; color: #94a3b8; }
+.kpi-status { position: absolute; top: 12px; right: 12px; width: 8px; height: 8px; border-radius: 50%; }
+.status-good { background: #059669; }
+.status-warn { background: #d97706; }
+.status-bad { background: #dc2626; }
+.kpi-bar { height: 4px; background: #e2e8f0; border-radius: 2px; margin-top: 10px; overflow: hidden; }
+.kpi-bar-fill { height: 100%; border-radius: 2px; }
+.bar-chart { display: flex; flex-direction: column; gap: 8px; }
+.bar-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.bar-label { width: 110px; text-align: right; color: #475569; flex-shrink: 0; }
+.bar-track { flex: 1; height: 18px; background: #f1f5f9; border-radius: 4px; position: relative; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; }
+.bar-value { width: 50px; font-weight: 600; color: #0f172a; font-size: 11px; }
+.line-chart { width: 100%; height: 200px; }
+.axis-label { font-size: 9px; fill: #94a3b8; }
+.grid-line { stroke: #f1f5f9; stroke-width: 1; }
+.heatmap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+.heat-cell { padding: 10px; border-radius: 6px; color: #fff; font-size: 11px; cursor: pointer; transition: all 0.15s; min-height: 56px; display: flex; flex-direction: column; justify-content: space-between; }
+.heat-cell:hover { transform: scale(1.03); }
+.heat-cell.highlighted { box-shadow: 0 0 0 3px #1e40af, 0 0 0 6px #fff; }
+.heat-cell-name { font-weight: 600; font-size: 11px; line-height: 1.2; }
+.heat-cell-value { font-size: 15px; font-weight: 700; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { text-align: left; padding: 8px 10px; border-bottom: 2px solid #e2e8f0; color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; background: #f8fafc; position: sticky; top: 0; }
+td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; }
+tr:hover td { background: #f8fafc; }
+tr.highlighted td { background: #dbeafe; font-weight: 500; }
+.table-wrap { max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+.badge-green { background: #d1fae5; color: #065f46; }
+.badge-yellow { background: #fef3c7; color: #92400e; }
+.badge-red { background: #fee2e2; color: #991b1b; }
+.badge-blue { background: #dbeafe; color: #1e40af; }
+.badge-gray { background: #f1f5f9; color: #475569; }
+.search-box { display: flex; gap: 8px; margin-bottom: 16px; }
+.search-box input { flex: 1; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; }
+.donut-wrap { display: flex; gap: 16px; align-items: center; }
+.donut-svg { width: 120px; height: 120px; }
+.donut-legend { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.legend-item { display: flex; align-items: center; gap: 8px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+.note { background: #f8fafc; border-left: 3px solid #3b82f6; padding: 8px 12px; font-size: 11px; color: #475569; border-radius: 0 6px 6px 0; margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mb-16 { margin-bottom: 16px; }
+.text-muted { color: #64748b; }
+.text-sm { font-size: 12px; }
+.flex { display: flex; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.flex-wrap { flex-wrap: wrap; }
+.gap-8 { gap: 8px; }
+.empty-state { padding: 32px; text-align: center; color: #94a3b8; font-size: 13px; }
+
+/* ================= Chat & Analysis ================= */
+.chat-container { display: flex; flex-direction: column; height: calc(100vh - 200px); min-height: 480px; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 12px; }
+.chat-msg { max-width: 90%; padding: 12px 16px; border-radius: 12px; font-size: 13px; }
+.chat-msg.user { align-self: flex-end; background: #1e40af; color: #fff; border-bottom-right-radius: 4px; white-space: pre-wrap; word-wrap: break-word; }
+.chat-msg.assistant { align-self: flex-start; background: #fff; border: 1px solid #e2e8f0; border-bottom-left-radius: 4px; line-height: 1.7; color: #0f172a; }
+.chat-msg.system-note { align-self: center; background: #fef3c7; color: #92400e; font-size: 11px; padding: 6px 14px; border-radius: 16px; text-align: center; max-width: 90%; }
+.chat-msg.assistant > *:first-child { margin-top: 0; }
+.chat-msg.assistant > *:last-child { margin-bottom: 0; }
+.chat-error { background: #fef2f2; color: #991b1b; border-left: 3px solid #dc2626; padding: 8px 12px; border-radius: 6px; font-size: 12px; }
+.chat-input-wrap { display: flex; gap: 8px; }
+.chat-input-wrap textarea { flex: 1; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-family: inherit; font-size: 13px; resize: none; min-height: 44px; max-height: 120px; }
+.chat-input-wrap textarea:focus { outline: 2px solid #3b82f6; outline-offset: 1px; }
+.chat-input-wrap button { align-self: flex-end; }
+.predefined-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.predefined-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; cursor: pointer; transition: all 0.15s; }
+.predefined-card:hover { border-color: #3b82f6; box-shadow: 0 2px 8px rgba(30,64,175,0.1); transform: translateY(-1px); }
+.predefined-card.selected { border-color: #1e40af; background: #eff6ff; }
+.predefined-card h3 { font-size: 13px; font-weight: 700; margin-bottom: 4px; color: #1e40af; }
+.predefined-card p { font-size: 11px; color: #64748b; line-height: 1.5; }
+.warning-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
+.warning-box strong { color: #991b1b; }
+.powered-footer { text-align: center; font-size: 10px; color: #94a3b8; padding: 16px 0 0; }
+.powered-footer a { color: #3b82f6; text-decoration: none; }
+.typing-cursor { display: inline-block; color: #3b82f6; font-weight: 700; animation: blink 1s infinite; margin-left: 2px; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ================= Markdown Rendering ================= */
+.md-p { margin: 0 0 10px; }
+.chat-msg.assistant h1, .chat-msg.assistant h2, .chat-msg.assistant h3, .chat-msg.assistant h4, .chat-msg.assistant h5, .chat-msg.assistant h6 { font-weight: 700; color: #0f172a; margin: 14px 0 8px; line-height: 1.3; }
+.chat-msg.assistant h1 { font-size: 18px; }
+.chat-msg.assistant h2 { font-size: 16px; }
+.chat-msg.assistant h3 { font-size: 15px; }
+.chat-msg.assistant h4 { font-size: 14px; }
+.chat-msg.assistant h5, .chat-msg.assistant h6 { font-size: 13px; }
+.chat-msg.assistant h1:first-child, .chat-msg.assistant h2:first-child, .chat-msg.assistant h3:first-child { margin-top: 0; }
+.md-list { margin: 0 0 10px; padding-left: 22px; }
+.md-list li { margin-bottom: 4px; line-height: 1.6; }
+.md-list li:last-child { margin-bottom: 0; }
+.md-inline-code { background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-family: 'SF Mono', Consolas, Monaco, monospace; font-size: 12px; color: #dc2626; }
+.md-code-block { background: #0f172a; color: #e2e8f0; padding: 12px 14px; border-radius: 8px; overflow-x: auto; margin: 10px 0; font-family: 'SF Mono', Consolas, Monaco, monospace; font-size: 12px; line-height: 1.5; }
+.md-code-block code { background: transparent; padding: 0; color: inherit; }
+.md-table-wrap { overflow-x: auto; margin: 10px 0; border-radius: 8px; border: 1px solid #e2e8f0; }
+.md-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.md-table th { background: #f8fafc; padding: 8px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #e2e8f0; color: #334155; }
+.md-table td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+.md-table tr:last-child td { border-bottom: none; }
+.md-blockquote { border-left: 3px solid #3b82f6; padding: 6px 12px; background: #f8fafc; margin: 10px 0; color: #475569; border-radius: 0 6px 6px 0; }
+.md-hr { border: none; border-top: 1px solid #e2e8f0; margin: 14px 0; }
+.chat-msg.assistant strong { font-weight: 700; color: #0f172a; }
+.chat-msg.assistant em { font-style: italic; }
+.chat-msg.assistant a { color: #1e40af; text-decoration: underline; }
+
+/* ================= Tambahan versi Live ================= */
+.src-note { font-size: 10.5px; color: #64748b; margin-top: 8px; line-height: 1.5; }
+.src-note a { color: #1e40af; }
+.notlive-banner { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; font-size: 12px; }
+.dummy-zone { position: relative; opacity: 0.6; filter: grayscale(0.5); }
+.dummy-card { border-style: dashed; background: #fafafa; }
+.spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #cbd5e1; border-top-color: #1e40af; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.live-status { font-size: 11px; color: #34d399; margin-top: 6px; }
+.filter-bar select:disabled { opacity: 0.5; }
+#ts-box { display: none; position: fixed; right: 16px; bottom: 16px; z-index: 1000; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; box-shadow: 0 6px 24px rgba(15,23,42,.15); font-size: 11px; color: #475569; }
+.sidebar-foot { padding: 16px 20px; font-size: 10px; color: #475569; border-top: 1px solid #1e293b; margin-top: 12px; line-height: 1.6; }
+.sidebar-foot a { color: #94a3b8; }
+
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <h1>📊 Dashboard Pendidikan</h1>
+      <p>Indonesia · Live (API Indonesia) · UCI</p>
+      <div class="live-status" id="live-status">Menghubungkan…</div>
+    </div>
+    <div class="nav-group-label">Ringkasan</div>
+    <div class="nav-item active" data-page="beranda"><span class="nav-icon">🏠</span><span>Beranda</span></div>
+    <div class="nav-group-label">Data &amp; Mutu</div>
+    <div class="nav-item" data-page="partisipasi"><span class="nav-icon">👥</span><span>Partisipasi</span></div>
+    <div class="nav-item" data-page="mutu"><span class="nav-icon">📚</span><span>Mutu</span></div>
+    <div class="nav-item" data-page="pemerataan"><span class="nav-icon">⚖️</span><span>Pemerataan</span></div>
+    <div class="nav-item" data-page="guru"><span class="nav-icon">👨‍🏫</span><span>Guru &amp; Tendik</span></div>
+    <div class="nav-group-label">Konteks</div>
+    <div class="nav-item" data-page="pendanaan"><span class="nav-icon">💰</span><span>Pendanaan</span></div>
+    <div class="nav-item" data-page="ats"><span class="nav-icon">⚠️</span><span>ATS</span></div>
+    <div class="nav-item" data-page="pisa"><span class="nav-icon">🌏</span><span>PISA</span></div>
+    <div class="nav-item" data-page="dikti"><span class="nav-icon">🎓</span><span>Pendidikan Tinggi</span></div>
+    <div class="nav-group-label">Aksi</div>
+    <div class="nav-item" data-page="earlywarning"><span class="nav-icon">🚨</span><span>Early Warning</span></div>
+    <div class="nav-item" data-page="sekolah"><span class="nav-icon">🏫</span><span>Profil Sekolah</span></div>
+    <div class="nav-item" data-page="explorer"><span class="nav-icon">🗄️</span><span>Data Explorer</span></div>
+    <div class="nav-group-label">Analisis</div>
+    <div class="nav-item" data-page="analisis-data"><span class="nav-icon">🤖</span><span>Analisis Data</span></div>
+    <div class="nav-item" data-page="analisis-predefined"><span class="nav-icon">📋</span><span>Pre-defined Analysis</span></div>
+    <div class="nav-item" data-page="analisis-lanjut"><span class="nav-icon">🧠</span><span>Analisis Lanjut</span></div>
+    <div class="sidebar-foot">Data live: <a href="https://apiindonesia.id" target="_blank" rel="noopener">API Indonesia</a> (layanan independen, bukan API resmi pemerintah). Panel berlabel <b>CONTOH / DUMMY</b> belum live.<br>UCI · School of Information</div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-title" id="topbar-title">Beranda</div>
+      <div class="filter-indicator" id="filter-indicator"></div>
+      <div class="filter-bar">
+        <select id="filter-provinsi" aria-label="Provinsi"><option value="all">Semua Provinsi</option></select>
+        <select id="filter-kabupaten" aria-label="Kabupaten/Kota" disabled><option value="all">Semua Kab/Kota</option></select>
+        <select id="filter-jenjang" aria-label="Jenjang"><option value="all">Semua Jenjang</option><option value="SD">SD</option><option value="SMP">SMP</option><option value="SMA">SMA</option><option value="SMK">SMK</option><option value="SLB">SLB</option></select>
+        <select id="filter-status" aria-label="Status"><option value="all">Negeri &amp; Swasta</option><option value="Negeri">Negeri</option><option value="Swasta">Swasta</option></select>
+        <button class="btn" id="btn-reset">↻ Reset</button>
+        <button class="btn btn-primary" id="btn-export">⬇ Ekspor</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <section class="page active" id="page-beranda"></section>
+      <section class="page" id="page-partisipasi"></section>
+      <section class="page" id="page-mutu"></section>
+      <section class="page" id="page-pemerataan"></section>
+      <section class="page" id="page-guru"></section>
+      <section class="page" id="page-pendanaan"></section>
+      <section class="page" id="page-ats"></section>
+      <section class="page" id="page-pisa"></section>
+      <section class="page" id="page-dikti"></section>
+      <section class="page" id="page-earlywarning"></section>
+      <section class="page" id="page-sekolah"></section>
+      <section class="page" id="page-explorer"></section>
+      <section class="page" id="page-analisis-data"></section>
+      <section class="page" id="page-analisis-predefined"></section>
+      <section class="page" id="page-analisis-lanjut"></section>
+    </main>
+  </div>
+</div>
+<div id="ts-box">Verifikasi keamanan (Cloudflare Turnstile)…<div id="ts-widget"></div></div>
+<script>
+
+
+/* ============================================================
+   MARKDOWN PARSER (self-contained, no dependencies)
+   ============================================================ */
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function parseMarkdown(md) {
+  if (!md) return '';
+  let text = String(md).replace(/\r\n/g, '\n');
+
+  // 1. Extract fenced code blocks (protect from inline processing)
+  const codeBlocks = [];
+  text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (m, lang, code) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push(`<pre class="md-code-block"><code>${escapeHtml(code.replace(/\n$/, ''))}</code></pre>`);
+    return `\u0000CB${idx}\u0000`;
+  });
+
+  // 2. Escape HTML everywhere else
+  text = escapeHtml(text);
+
+  // 3. Inline code (must be before bold/italic to protect content)
+  const inlineCodes = [];
+  text = text.replace(/`([^`\n]+)`/g, (m, code) => {
+    const idx = inlineCodes.length;
+    inlineCodes.push(`<code class="md-inline-code">${code}</code>`);
+    return `\u0000IC${idx}\u0000`;
+  });
+
+  // 4. Headings
+  text = text.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>');
+  text = text.replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>');
+  text = text.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
+  text = text.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+  text = text.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+  text = text.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+
+  // 5. Horizontal rule
+  text = text.replace(/^\s*---+\s*$/gm, '<hr class="md-hr">');
+
+  // 6. Blockquote (merge consecutive > lines into one block)
+  text = text.replace(/(^>\s?.+(\n>.*)*$)/gm, (match) => {
+    const content = match.split('\n').map(l => l.replace(/^>\s?/, '')).join('<br>');
+    return `<blockquote class="md-blockquote">${content}</blockquote>`;
+  });
+
+  // 7. Bold & italic
+  text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  text = text.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
+  text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+  // 8. Links
+  text = text.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+  // 9. Tables
+  const lines = text.split('\n');
+  const withTables = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const next = lines[i + 1];
+    if (/^\s*\|.+\|\s*$/.test(line) && next && /^\s*\|[\s\-:|]+\|\s*$/.test(next)) {
+      const headers = line.trim().split('|').slice(1, -1).map(c => c.trim());
+      i += 2;
+      const rows = [];
+      while (i < lines.length && /^\s*\|.+\|\s*$/.test(lines[i])) {
+        rows.push(lines[i].trim().split('|').slice(1, -1).map(c => c.trim()));
+        i++;
+      }
+      const thead = '<thead><tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr></thead>';
+      const tbody = '<tbody>' + rows.map(r => '<tr>' + r.map(c => `<td>${c}</td>`).join('') + '</tr>').join('') + '</tbody>';
+      withTables.push(`<div class="md-table-wrap"><table class="md-table">${thead}${tbody}</table></div>`);
+      continue;
+    }
+    withTables.push(line);
+    i++;
+  }
+  text = withTables.join('\n');
+
+  // 10. Lists
+  const lines2 = text.split('\n');
+  const withLists = [];
+  let inUl = false, inOl = false;
+  for (const line of lines2) {
+    const ulMatch = line.match(/^\s*[-*+]\s+(.+)$/);
+    const olMatch = line.match(/^\s*\d+\.\s+(.+)$/);
+    if (ulMatch) {
+      if (inOl) { withLists.push('</ol>'); inOl = false; }
+      if (!inUl) { withLists.push('<ul class="md-list">'); inUl = true; }
+      withLists.push(`<li>${ulMatch[1]}</li>`);
+    } else if (olMatch) {
+      if (inUl) { withLists.push('</ul>'); inUl = false; }
+      if (!inOl) { withLists.push('<ol class="md-list">'); inOl = true; }
+      withLists.push(`<li>${olMatch[1]}</li>`);
+    } else {
+      if (inUl) { withLists.push('</ul>'); inUl = false; }
+      if (inOl) { withLists.push('</ol>'); inOl = false; }
+      withLists.push(line);
+    }
+  }
+  if (inUl) withLists.push('</ul>');
+  if (inOl) withLists.push('</ol>');
+  text = withLists.join('\n');
+
+  // 11. Paragraph wrapping
+  const lines3 = text.split('\n');
+  const withParas = [];
+  let paraBuf = [];
+  const flushPara = () => {
+    if (!paraBuf.length) return;
+    const content = paraBuf.join('<br>').trim();
+    if (content) withParas.push(`<p class="md-p">${content}</p>`);
+    paraBuf = [];
+  };
+  const blockLevelRegex = /^<\/?(h[1-6]|ul|ol|li|pre|table|thead|tbody|tr|th|td|div|blockquote|hr)/;
+  for (const line of lines3) {
+    const trimmed = line.trim();
+    if (!trimmed) { flushPara(); continue; }
+    if (blockLevelRegex.test(trimmed)) { flushPara(); withParas.push(line); }
+    else paraBuf.push(line);
+  }
+  flushPara();
+  text = withParas.join('\n');
+
+  // 12. Restore inline code & code blocks
+  text = text.replace(/\u0000IC(\d+)\u0000/g, (m, idx) => inlineCodes[+idx]);
+  text = text.replace(/\u0000CB(\d+)\u0000/g, (m, idx) => codeBlocks[+idx]);
+
+  return text;
+}
+
+function parseMarkdownWithCursor(text) {
+  let html = parseMarkdown(text);
+  const cursor = '<span class="typing-cursor">▋</span>';
+  if (html.endsWith('</p>')) return html.slice(0, -4) + cursor + '</p>';
+  if (html.endsWith('</li>')) return html.slice(0, -5) + cursor + '</li>';
+  if (html.endsWith('</td>')) return html.slice(0, -5) + cursor + '</td>';
+  if (html.endsWith('</h1>') || html.endsWith('</h2>') || html.endsWith('</h3>') ||
+      html.endsWith('</h4>') || html.endsWith('</h5>') || html.endsWith('</h6>')) {
+    return html.replace(/<\/h([1-6])>$/, cursor + '</h$1>');
+  }
+  return html + cursor;
+}
+
+
+/* ============================================================
+   DATA CONTOH / DUMMY (dari prototipe v0.6) — HANYA untuk panel yang belum live.
+   Semua panel yang memakai DATA ini diberi label "CONTOH / DUMMY".
+   ============================================================ */
+const DATA = {
+  kpi: {
+    apk:    { label: 'APK (Dikdasmen)',       value: 97.8, unit: '%',  target: 99.0, trend: [96.5, 97.0, 97.3, 97.6, 97.8], higherBetter: true },
+    apm:    { label: 'APM (Dikdasmen)',       value: 84.2, unit: '%',  target: 90.0, trend: [82.1, 82.8, 83.4, 83.9, 84.2], higherBetter: true },
+    skorAN: { label: 'Skor AN (rata-rata)',   value: 67.2, unit: '',   target: 75.0, trend: [64.1, 65.0, 66.2, 66.8, 67.2], higherBetter: true },
+    rasio:  { label: 'Rasio Siswa-Guru',      value: 13.5, unit: ':1', target: 16.0, trend: [14.2, 14.0, 13.8, 13.6, 13.5], higherBetter: false },
+    ats:    { label: 'Anak Tidak Sekolah',    value: 4.15, unit: 'jt', target: 2.00, trend: [4.50, 4.30, 4.20, 4.10, 4.15], higherBetter: false },
+    akredA: { label: 'Sekolah Akreditasi A',  value: 19.7, unit: '%',  target: 60.0, trend: [17.2, 17.9, 18.5, 19.1, 19.7], higherBetter: true },
+  },
+  provinces: [
+    { name: 'DKI Jakarta',        apk: 102.1, apm: 96.2, an: 76.8, rasio: 12.5, ats: 0.9, akredA: 48.2, anggaran: 18.5, apkPT: 40.5 },
+    { name: 'DI Yogyakarta',      apk: 100.5, apm: 95.1, an: 73.5, rasio: 11.8, ats: 1.2, akredA: 42.5, anggaran: 12.1, apkPT: 74.7 },
+    { name: 'Bali',               apk: 99.8,  apm: 93.2, an: 71.2, rasio: 12.2, ats: 1.5, akredA: 38.1, anggaran: 11.8, apkPT: 40.7 },
+    { name: 'Kalimantan Timur',   apk: 99.1,  apm: 91.5, an: 69.5, rasio: 13.1, ats: 2.1, akredA: 32.5, anggaran: 16.2, apkPT: 40.4 },
+    { name: 'Jawa Timur',         apk: 98.9,  apm: 89.8, an: 68.2, rasio: 13.8, ats: 3.0, akredA: 24.5, anggaran: 10.5, apkPT: 35.2 },
+    { name: 'Jawa Tengah',        apk: 98.5,  apm: 88.9, an: 67.5, rasio: 13.5, ats: 3.2, akredA: 23.8, anggaran: 10.2, apkPT: 34.8 },
+    { name: 'Sulawesi Utara',     apk: 98.2,  apm: 89.1, an: 68.1, rasio: 13.6, ats: 2.8, akredA: 24.1, anggaran: 11.5, apkPT: 38.5 },
+    { name: 'Sumatera Barat',     apk: 97.9,  apm: 88.2, an: 67.1, rasio: 13.4, ats: 3.3, akredA: 22.5, anggaran: 10.8, apkPT: 42.3 },
+    { name: 'Sulawesi Selatan',   apk: 97.5,  apm: 87.5, an: 66.8, rasio: 14.1, ats: 3.8, akredA: 21.2, anggaran: 11.2, apkPT: 34.1 },
+    { name: 'Sumatera Selatan',   apk: 97.2,  apm: 86.8, an: 66.2, rasio: 14.5, ats: 4.0, akredA: 20.5, anggaran: 10.1, apkPT: 32.5 },
+    { name: 'Kalimantan Selatan', apk: 96.9,  apm: 86.5, an: 66.0, rasio: 14.2, ats: 4.1, akredA: 19.8, anggaran: 12.5, apkPT: 31.8 },
+    { name: 'Sumatera Utara',     apk: 96.8,  apm: 85.9, an: 65.5, rasio: 15.2, ats: 4.3, akredA: 18.9, anggaran: 9.8,  apkPT: 31.2 },
+    { name: 'Lampung',            apk: 96.5,  apm: 85.2, an: 65.1, rasio: 15.8, ats: 4.6, akredA: 17.5, anggaran: 9.2,  apkPT: 30.5 },
+    { name: 'Riau',               apk: 96.2,  apm: 84.8, an: 64.8, rasio: 15.5, ats: 4.8, akredA: 17.1, anggaran: 11.0, apkPT: 30.1 },
+    { name: 'Banten',             apk: 95.8,  apm: 84.1, an: 64.2, rasio: 16.8, ats: 5.4, akredA: 16.2, anggaran: 9.5,  apkPT: 29.8 },
+    { name: 'Kalimantan Barat',   apk: 95.2,  apm: 83.5, an: 63.5, rasio: 16.5, ats: 5.9, akredA: 15.5, anggaran: 10.8, apkPT: 28.5 },
+    { name: 'NTB',                apk: 94.8,  apm: 82.8, an: 63.0, rasio: 17.2, ats: 6.3, akredA: 14.8, anggaran: 9.6,  apkPT: 27.2 },
+    { name: 'Maluku',             apk: 94.2,  apm: 81.9, an: 62.1, rasio: 17.8, ats: 6.9, akredA: 13.5, anggaran: 11.5, apkPT: 42.9 },
+    { name: 'NTT',                apk: 93.5,  apm: 81.2, an: 61.5, rasio: 18.2, ats: 7.8, akredA: 12.8, anggaran: 9.8,  apkPT: 25.8 },
+    { name: 'Papua Barat',        apk: 91.8,  apm: 79.5, an: 59.2, rasio: 19.5, ats: 8.8, akredA: 10.5, anggaran: 14.2, apkPT: 22.5 },
+    { name: 'Papua',              apk: 90.5,  apm: 78.2, an: 58.0, rasio: 20.2, ats: 9.6, akredA: 9.2,  anggaran: 15.5, apkPT: 18.2 },
+  ],
+  partisipasiByJenjang: { PAUD: { apk: 72.1, apm: 38.5 }, SD: { apk: 99.1, apm: 97.0 }, SMP: { apk: 98.2, apm: 80.7 }, SMA: { apk: 89.5, apm: 67.4 }, SMK: { apk: 65.8, apm: 52.1 } },
+  mutuKompetensi: { numerasi: { dasar: 42, menengah: 41, mahir: 17 }, literasi: { dasar: 38, menengah: 45, mahir: 17 } },
+  akreditasi: { A: 19.7, B: 36.9, C: 41.1, TT: 2.3 },
+  guruKualifikasi: { S1: 78.2, S2: 12.4, S3: 0.4, 'Diploma': 7.5, 'SMA': 1.5 },
+  pisa: { indonesia: { matematika: 364, membaca: 365, sains: 389 }, oecd: { matematika: 463, membaca: 461, sains: 482 }, trenIndo: { matematika: [386, 386, 379, 366, 364], membaca: [397, 397, 371, 359, 365], sains: [403, 403, 383, 383, 389] } },
+  ats: { total: 4149742, bpb: 1968958, do: 1061041, ltm: 1119743 },
+  anggaran: { total: 724.3, perSiswa: 15.7, realisasi: 10.6 },
+  schools: [
+    { npsn: '20101001', name: 'SMA Negeri 1 Jakarta', jenjang: 'SMA', status: 'Negeri', akreditasi: 'A', siswa: 1080, guru: 72 },
+    { npsn: '20201002', name: 'SMP Negeri 5 Bandung', jenjang: 'SMP', status: 'Negeri', akreditasi: 'A', siswa: 920, guru: 68 },
+    { npsn: '20301003', name: 'SD Negeri 3 Yogyakarta', jenjang: 'SD', status: 'Negeri', akreditasi: 'A', siswa: 420, guru: 26 },
+    { npsn: '20401004', name: 'SMK Negeri 2 Surabaya', jenjang: 'SMK', status: 'Negeri', akreditasi: 'A', siswa: 1440, guru: 118 },
+    { npsn: '20501005', name: 'SMA Swasta Harapan Bangsa', jenjang: 'SMA', status: 'Swasta', akreditasi: 'B', siswa: 380, guru: 30 },
+    { npsn: '20601006', name: 'SD Swasta Tunas Harapan', jenjang: 'SD', status: 'Swasta', akreditasi: 'B', siswa: 320, guru: 18 },
+    { npsn: '20701007', name: 'SMP Swasta Cendekia', jenjang: 'SMP', status: 'Swasta', akreditasi: 'B', siswa: 410, guru: 28 },
+  ],
+  dikti: {
+    apk: 32.89, apkL: 29.88, apkP: 35.98, mahasiswa: 10754154, dosen: 351205, rasio: 33,
+    pt: { total: 4303, ptn: 127, pts: 2713, pta: 1318, ptk: 145 },
+    akreditasi: { unggul: 149, baikSekali: 442, baik: 2574, A: 12, B: 417, C: 3, tidakAda: 819 },
+    lulusanS1: 1260000, tptUniversitas: 5.39, tptNasional: 4.76, pengangguranPT: 904440,
+    provinsi: [
+      { name: 'DI Yogyakarta', apkPT: 74.70 }, { name: 'Maluku', apkPT: 42.89 }, { name: 'Sumatera Barat', apkPT: 42.32 }, { name: 'Bali', apkPT: 40.69 }, { name: 'Kalimantan Timur', apkPT: 40.44 }, { name: 'DKI Jakarta', apkPT: 40.50 }, { name: 'Sulawesi Utara', apkPT: 38.50 }, { name: 'Jawa Timur', apkPT: 35.20 }, { name: 'Jawa Tengah', apkPT: 34.80 }, { name: 'Sulawesi Selatan', apkPT: 34.10 }, { name: 'Sumatera Selatan', apkPT: 32.50 }, { name: 'Kalimantan Selatan', apkPT: 31.80 }, { name: 'Sumatera Utara', apkPT: 31.20 }, { name: 'Lampung', apkPT: 30.50 }, { name: 'Riau', apkPT: 30.10 }, { name: 'Banten', apkPT: 29.80 }, { name: 'Kalimantan Barat', apkPT: 28.50 }, { name: 'NTB', apkPT: 27.20 }, { name: 'NTT', apkPT: 25.80 }, { name: 'Papua Barat', apkPT: 22.50 }, { name: 'Papua', apkPT: 18.20 },
+    ]
+  }
+};
+
+/* ============================================================
+   HELPERS (chart rendering)
+   ============================================================ */
+function fmt(n, dec = 1) { return Number(n).toLocaleString('id-ID', { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
+function statusClass(value, target, higherBetter) {
+  if (higherBetter) { if (value >= target) return 'status-good'; if (value >= target * 0.9) return 'status-warn'; return 'status-bad'; }
+  else { if (value <= target) return 'status-good'; if (value <= target * 1.1) return 'status-warn'; return 'status-bad'; }
+}
+function barChart(items, { max, unit = '', formatter = fmt } = {}) {
+  const maxVal = max || Math.max(...items.map(i => i.value));
+  return `<div class="bar-chart">${items.map(item => `
+    <div class="bar-row"><div class="bar-label">${item.label}</div>
+    <div class="bar-track"><div class="bar-fill" style="width:${(item.value/maxVal)*100}%;background:${item.color||'#3b82f6'}"></div></div>
+    <div class="bar-value">${formatter(item.value)}${unit}</div></div>`).join('')}</div>`;
+}
+function lineChart(values, labels, { width=400, height=160, color='#1e40af', yMin, yMax } = {}) {
+  if (!values.length) return '<div class="empty-state">Tidak ada data</div>';
+  if (values.length === 1) return `<div style="padding:20px;text-align:center"><div style="font-size:32px;font-weight:700;color:${color}">${fmt(values[0],1)}</div><div class="text-sm text-muted">${labels[0]}</div></div>`;
+  const pad={l:36,r:12,t:12,b:24}, w=width-pad.l-pad.r, h=height-pad.t-pad.b;
+  const minV=yMin!==undefined?yMin:Math.min(...values), maxV=yMax!==undefined?yMax:Math.max(...values);
+  const range=maxV-minV||1, stepX=w/(values.length-1);
+  const pts=values.map((v,i)=>({x:pad.l+i*stepX,y:pad.t+h-((v-minV)/range)*h}));
+  const path=pts.map((p,i)=>`${i===0?'M':'L'}${p.x},${p.y}`).join(' ');
+  const yTicks=[0,0.5,1].map(t=>{const v=minV+t*range,y=pad.t+h-t*h;
+    return `<line class="grid-line" x1="${pad.l}" y1="${y}" x2="${width-pad.r}" y2="${y}"/><text class="axis-label" x="${pad.l-6}" y="${y+3}" text-anchor="end">${fmt(v,0)}</text>`;}).join('');
+  const xLabels=pts.map((p,i)=>`<text class="axis-label" x="${p.x}" y="${height-6}" text-anchor="middle">${labels[i]||''}</text>`).join('');
+  const area=`${path} L${pts[pts.length-1].x},${pad.t+h} L${pts[0].x},${pad.t+h} Z`;
+  return `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" class="line-chart">${yTicks}<path d="${area}" fill="${color}" opacity="0.08"/><path d="${path}" stroke="${color}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>${pts.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="#fff" stroke="${color}" stroke-width="2"/>`).join('')}${xLabels}</svg>`;
+}
+function donutChart(segments) {
+  const total=segments.reduce((s,x)=>s+x.value,0), r=45,cx=60,cy=60,circ=2*Math.PI*r;
+  let offset=0;
+  const arcs=segments.map(seg=>{const len=(seg.value/total)*circ;
+    const arc=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${seg.color}" stroke-width="16" stroke-dasharray="${len} ${circ-len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    offset+=len; return arc;}).join('');
+  return `<svg class="donut-svg" viewBox="0 0 120 120"><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#f1f5f9" stroke-width="16"/>${arcs}</svg>`;
+}
+function heatmap(metric, { invert=false, unit='', dec=1, dataSet, highlight=null } = {}) {
+  const rows = dataSet || DATA.provinces;
+  const values = rows.map(p=>p[metric]);
+  const min=Math.min(...values), max=Math.max(...values);
+  return `<div class="heatmap-grid">${rows.map(p=>{
+    const v=p[metric], t=(v-min)/(max-min||1), score=invert?1-t:t;
+    const r=Math.round(220-score*200), g=Math.round(50+score*130), b=Math.round(80-score*30);
+    const isHi = highlight && p.name === highlight;
+    return `<div class="heat-cell${isHi?' highlighted':''}" style="background:rgb(${r},${g},${b})" title="${p.name}: ${fmt(v,dec)}${unit}"><div class="heat-cell-name">${p.name}</div><div class="heat-cell-value">${fmt(v,dec)}${unit}</div></div>`;
+  }).join('')}</div>`;
+}
+function heatmapProv(metric, opts = {}) { return heatmap(metric, { ...opts, highlight: STATE.provinsi === 'all' ? null : STATE.provinsi }); }
+
+/* ============================================================
+   PUTER AI CALL
+   ============================================================ */
+async function callPuterAI(messages, { model = 'gpt-5.4-nano', onChunk } = {}) {
+  const response = await puter.ai.chat(messages, { model, stream: true });
+  let fullText = '';
+  for await (const part of response) {
+    if (part?.type === 'error') throw new Error(part.message || 'AI error');
+    const text = part?.text || '';
+    if (text) { fullText += text; if (onChunk) onChunk(fullText); }
+  }
+  return fullText || 'Maaf, tidak ada respons.';
+}
+
+/* ============================================================
+   CHAT UI
+   ============================================================ */
+function createChatUI(containerId, { placeholder, onSend, systemNote = null, welcomeText = null }) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = `
+    <div class="chat-container">
+      <div class="chat-messages" id="${containerId}-messages">
+        ${systemNote ? `<div class="chat-msg system-note">${systemNote}</div>` : ''}
+        ${welcomeText ? `<div class="chat-msg assistant">${parseMarkdown(welcomeText)}</div>` : ''}
+      </div>
+      <div class="chat-input-wrap">
+        <textarea id="${containerId}-input" placeholder="${placeholder}" rows="1"></textarea>
+        <button class="btn btn-primary" id="${containerId}-send">Kirim</button>
+      </div>
+      <div class="powered-footer">Didukung oleh <a href="https://developer.puter.com" target="_blank">Puter.js</a></div>
+    </div>`;
+  const input = document.getElementById(`${containerId}-input`);
+  const sendBtn = document.getElementById(`${containerId}-send`);
+  const messagesEl = document.getElementById(`${containerId}-messages`);
+  let busy = false;
+
+  function appendUserMsg(text) {
+    const div = document.createElement('div');
+    div.className = 'chat-msg user';
+    div.textContent = text;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+  }
+  function appendAssistantMsg() {
+    const div = document.createElement('div');
+    div.className = 'chat-msg assistant';
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+  }
+  function setBusy(b) {
+    busy = b;
+    sendBtn.disabled = b;
+    sendBtn.textContent = b ? 'Menganalisis…' : 'Kirim';
+    input.disabled = b;
+  }
+  async function sendMessage(displayText, apiText = null) {
+    if (busy) return;
+    appendUserMsg(displayText);
+    const asstEl = appendAssistantMsg();
+    asstEl.innerHTML = '<span class="typing-cursor">▋</span>';
+    setBusy(true);
+    try {
+      const finalText = await onSend(apiText || displayText, (partial) => {
+        asstEl.innerHTML = parseMarkdownWithCursor(partial);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      });
+      asstEl.innerHTML = parseMarkdown(finalText || '');
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    } catch (err) {
+      asstEl.innerHTML = `<div class="chat-error">⚠️ Gagal memproses: ${escapeHtml(err?.message || 'kesalahan tidak dikenal')}. Pastikan Anda sudah login ke Puter dan coba lagi.</div>`;
+    } finally {
+      setBusy(false);
+      input.focus();
+    }
+  }
+  async function send() {
+    const text = input.value.trim();
+    if (!text || busy) return;
+    input.value = '';
+    await sendMessage(text);
+  }
+  sendBtn.addEventListener('click', send);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  });
+  return { sendMessage, messagesEl };
+}
+
+/* ============================================================
+   LIVE DATA LAYER — API Indonesia via Worker proxy (/api/v1/*)
+   Kunci API TIDAK pernah ada di browser; semua lewat Worker.
+   ============================================================ */
+const STATE = { provinsi: 'all', kabupaten: 'all', jenjang: 'all', status: 'all' };
+const LIVE = {
+  provinces: [], provMap: {}, kab: {},
+  counts: {},
+  fan: {},
+  kampus: null, kampusMissing: null, kampusLoading: false,
+  beasiswa: null, beasiswaMeta: null,
+  schoolSource: null,
+  errors: [],
+};
+const SRC = {
+  wilayah: 'Kode & nama wilayah Kemendagri via API Indonesia (/api/v1/wilayah)',
+  sekolah: 'Data sekolah (NPSN) via API Indonesia /api/v1/sekolah — sumber menurut dokumentasi: referensi.data.kemdikbud.go.id',
+  kampus: 'Data perguruan tinggi via API Indonesia /api/v1/kampus — ID record berawalan "pddikti-" (PDDikti)',
+};
+const TURNSTILE_SITEKEY = document.querySelector('meta[name="turnstile-sitekey"]')?.content || '';
+
+/* ---------- Sesi Turnstile ---------- */
+let sessionPromise = null;
+function loadTurnstileScript() {
+  return new Promise((resolve, reject) => {
+    if (window.turnstile) return resolve();
+    const s = document.createElement('script');
+    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    s.async = true; s.onload = () => resolve(); s.onerror = () => reject(new Error('Gagal memuat Turnstile'));
+    document.head.appendChild(s);
+  });
+}
+function ensureSession(force = false) {
+  if (!TURNSTILE_SITEKEY) return Promise.resolve();
+  if (sessionPromise && !force) return sessionPromise;
+  sessionPromise = (async () => {
+    await loadTurnstileScript();
+    const box = document.getElementById('ts-box');
+    box.style.display = 'block';
+    const token = await new Promise((resolve, reject) => {
+      const holder = document.getElementById('ts-widget');
+      holder.innerHTML = '';
+      window.turnstile.render(holder, {
+        sitekey: TURNSTILE_SITEKEY, action: 'edudata', appearance: 'interaction-only',
+        callback: resolve, 'error-callback': () => reject(new Error('Verifikasi Turnstile gagal')),
+        'expired-callback': () => reject(new Error('Token Turnstile kedaluwarsa')),
+      });
+    });
+    const r = await fetch('/api/session', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }), credentials: 'same-origin' });
+    box.style.display = 'none';
+    if (!r.ok) throw new Error('Sesi ditolak server (' + r.status + ')');
+  })();
+  sessionPromise.catch(() => { sessionPromise = null; });
+  return sessionPromise;
+}
+
+/* ---------- Fetch helper dengan memo + antrean (maks 4 paralel) ---------- */
+const memo = new Map();
+let active = 0; const queue = [];
+function schedule(fn) {
+  return new Promise((resolve, reject) => {
+    const run = async () => { active++; try { resolve(await fn()); } catch (e) { reject(e); } finally { active--; if (queue.length) queue.shift()(); } };
+    if (active < 4) run(); else queue.push(run);
+  });
+}
+async function api(path, { cacheOnly = false } = {}) {
+  if (cacheOnly && memo.has(path)) return memo.get(path);
+  const k = (cacheOnly ? 'CO:' : '') + path;
+  if (memo.has(k)) return memo.get(k);
+  const p = schedule(async () => {
+    await ensureSession();
+    const doFetch = () => fetch('/api/v1/' + path, { headers: cacheOnly ? { 'x-edudata-cache-only': '1' } : {}, credentials: 'same-origin' });
+    let r = await doFetch();
+    if (r.status === 403) { const j = await r.clone().json().catch(() => ({})); if (j.code === 'SESSION_REQUIRED') { await ensureSession(true); r = await doFetch(); } }
+    if (r.status === 404 && cacheOnly) { memo.delete(k); return { __miss: true }; }
+    const j = await r.json().catch(() => ({ success: false, error: 'Respons tidak valid' }));
+    if (!r.ok || j.success === false) { const e = new Error(j.error || ('HTTP ' + r.status)); e.code = j.code; e.status = r.status; throw e; }
+    if (cacheOnly) memo.set(path, Promise.resolve(j));
+    return j;
+  });
+  memo.set(k, p);
+  p.catch(() => memo.delete(k));
+  return p;
+}
+function qs(obj) { const u = new URLSearchParams(); Object.entries(obj).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '' && v !== 'all') u.set(k, v); }); const s = u.toString(); return s ? '?' + s : ''; }
+function sekolahFilter({ prov = STATE.provinsi, kab = STATE.kabupaten, jenjang = STATE.jenjang, status = STATE.status } = {}) {
+  return { provinsi_id: prov, kabupaten_id: kab, jenis: jenjang, status };
+}
+function filterKey(f) { return JSON.stringify(f); }
+function provName(id) { return LIVE.provMap[id]?.name || id; }
+function shortProv(n) { return String(n).replace('Daerah Khusus Ibukota ', 'DKI ').replace('Daerah Istimewa ', 'DI ').replace('Kepulauan Bangka Belitung', 'Kep. Babel').replace('Nusa Tenggara Barat', 'NTB').replace('Nusa Tenggara Timur', 'NTT'); }
+function regionLabel() {
+  if (STATE.provinsi === 'all') return 'Nasional';
+  const p = shortProv(provName(STATE.provinsi));
+  if (STATE.kabupaten !== 'all') { const k = (LIVE.kab[STATE.provinsi] || []).find(x => x.id === STATE.kabupaten); return `${k ? k.name : STATE.kabupaten}, ${p}`; }
+  return p;
+}
+function pct(a, b) { return b ? (a / b) * 100 : 0; }
+function esc(s) { return escapeHtml(s ?? ''); }
+
+/* ---------- Badge & atribusi ---------- */
+function liveBadge() { return '<span class="badge badge-green" title="Data live dari API Indonesia">● LIVE</span>'; }
+function dummyBadge() { return '<span class="badge badge-red" title="Angka contoh, bukan data resmi">CONTOH / DUMMY</span>'; }
+function srcNote(text) { return `<div class="src-note">Sumber: ${text}</div>`; }
+function notLiveBanner(sources) {
+  return `<div class="notlive-banner"><b>⚠️ Data belum live</b> — indikator di halaman ini tidak tersedia di API Indonesia. Angka di bawah adalah <b>contoh (dummy)</b> dari prototipe v0.6, bukan data resmi. Sumber yang perlu diintegrasikan: ${sources}.</div>`;
+}
+function loading(msg = 'Memuat data live…') { return `<div class="empty-state"><span class="spinner"></span> ${msg}</div>`; }
+function errBox(e) { return `<div class="chat-error">⚠️ ${esc(e?.message || e)}</div>`; }
+
+/* ---------- Loader: wilayah ---------- */
+async function loadProvinces() {
+  const j = await api('wilayah/provinsi?per_page=100');
+  LIVE.provinces = j.data.map(p => ({ id: p.id, name: p.name || p.alt_name, lat: p.lat, lng: p.lng }));
+  LIVE.provinces.forEach(p => LIVE.provMap[p.id] = p);
+}
+async function loadKabupaten(provId) {
+  if (LIVE.kab[provId]) return LIVE.kab[provId];
+  const j = await api(`wilayah/provinsi/${provId}/kabupaten?per_page=100`);
+  LIVE.kab[provId] = j.data.map(k => ({ id: k.id, name: k.name, type: k.type }));
+  return LIVE.kab[provId];
+}
+
+/* ---------- Hitungan sekolah untuk filter aktif (4-5 panggilan) ---------- */
+async function loadCounts(f = sekolahFilter()) {
+  const key = filterKey(f);
+  if (LIVE.counts[key]) return LIVE.counts[key];
+  const base = { ...f, per_page: 1 };
+  const parts = [['total', {}], ['A', { accreditation: 'A' }], ['B', { accreditation: 'B' }], ['C', { accreditation: 'C' }]];
+  if (f.status === 'all') parts.push(['Negeri', { status: 'Negeri' }]);
+  const out = {};
+  await Promise.all(parts.map(async ([name, extra]) => {
+    const j = await api('sekolah' + qs({ ...base, ...extra }));
+    out[name] = j.meta?.total ?? 0;
+    if (name === 'total' && j.data?.[0]) noteSchoolSource(j.data[0]);
+  }));
+  if (f.status === 'Negeri') out.Negeri = out.total; else if (f.status === 'Swasta') out.Negeri = 0;
+  LIVE.counts[key] = out;
+  return out;
+}
+function noteSchoolSource(rec) {
+  if (rec && rec.source_name && !LIVE.schoolSource) LIVE.schoolSource = { name: rec.source_name, url: rec.source_url, synced: rec.source_synced_at };
+}
+
+/* ---------- Fan-out per wilayah (total + akreditasi A), cache dulu ---------- */
+function fanKey(level, parent) { return [level, parent || '-', STATE.jenjang, STATE.status].join('|'); }
+function fanUnits(level, parent) {
+  if (level === 'prov') return LIVE.provinces.map(p => ({ id: p.id, name: shortProv(p.name), f: sekolahFilter({ prov: p.id, kab: 'all' }) }));
+  return (LIVE.kab[parent] || []).map(k => ({ id: k.id, name: k.name.replace(/^Kabupaten /i, 'Kab. '), f: sekolahFilter({ prov: parent, kab: k.id }) }));
+}
+async function loadFan(level, parent, { allowUpstream = false } = {}) {
+  const key = fanKey(level, parent);
+  const st = LIVE.fan[key] || (LIVE.fan[key] = { rows: null, missing: null, loading: false });
+  if (st.rows || st.loading) return st;
+  st.loading = true; st.error = null;
+  try {
+    if (level === 'kab') await loadKabupaten(parent);
+    if (level === 'prov' && !LIVE.provinces.length) await loadProvinces();
+    const units = fanUnits(level, parent);
+    let missing = 0;
+    const rows = await Promise.all(units.map(async u => {
+      const r = { id: u.id, name: u.name };
+      for (const [name, extra] of [['total', {}], ['A', { accreditation: 'A' }]]) {
+        const j = await api('sekolah' + qs({ ...u.f, per_page: 1, ...extra }), { cacheOnly: !allowUpstream });
+        if (j.__miss) { missing++; r[name] = null; } else { r[name] = j.meta?.total ?? 0; if (j.data?.[0]) noteSchoolSource(j.data[0]); }
+      }
+      r.akredA = r.total && r.A ? pct(r.A, r.total) : null; // A=0 → kemungkinan besar data akreditasi kosong di sumber
+      return r;
+    }));
+    if (missing) st.missing = missing; else { st.rows = rows; st.missing = 0; }
+  } catch (e) { st.error = e; }
+  st.loading = false;
+  return st;
+}
+function fanControl(level, parent) {
+  const st = LIVE.fan[fanKey(level, parent)];
+  if (!st || st.loading) return loading('Memuat data per wilayah…');
+  if (st.error) return errBox(st.error);
+  if (st.rows) return '';
+  const n = st.missing;
+  return `<div class="empty-state">Data per ${level === 'prov' ? 'provinsi' : 'kab/kota'} untuk filter ini belum ter-cache (±${n} panggilan ≈ ${n * 2} kredit API Indonesia, lalu di-cache 7 hari).<br><br>
+    <button class="btn btn-primary" onclick="fetchFan('${level}','${parent || ''}')">Muat data live</button></div>`;
+}
+async function fetchFan(level, parent) {
+  delete LIVE.fan[fanKey(level, parent || null)];
+  const p = loadFan(level, parent || null, { allowUpstream: true });
+  rerender(); await p; rerender();
+}
+
+/* ---------- Kampus (gabungan semua halaman, cache dulu) ---------- */
+async function loadKampus({ allowUpstream = false } = {}) {
+  if (LIVE.kampus || LIVE.kampusLoading) return;
+  LIVE.kampusLoading = true; LIVE.kampusError = null;
+  try {
+    const first = await api('kampus?per_page=200&page=1', { cacheOnly: !allowUpstream });
+    if (first.__miss) { LIVE.kampusMissing = 22; LIVE.kampusLoading = false; return; }
+    const pages = first.meta?.total_pages || 1;
+    const rest = await Promise.all(Array.from({ length: pages - 1 }, (_, i) => api(`kampus?per_page=200&page=${i + 2}`, { cacheOnly: !allowUpstream })));
+    const miss = rest.filter(r => r.__miss).length;
+    if (miss) LIVE.kampusMissing = miss;
+    else { LIVE.kampus = [first, ...rest].flatMap(r => r.data); LIVE.kampusMissing = 0; }
+  } catch (e) { LIVE.kampusError = e; }
+  LIVE.kampusLoading = false;
+}
+async function fetchKampus() { LIVE.kampusMissing = null; const p = loadKampus({ allowUpstream: true }); rerender(); await p; rerender(); }
+function kampusControl() {
+  if (LIVE.kampusLoading) return loading('Memuat data perguruan tinggi…');
+  if (LIVE.kampusError) return errBox(LIVE.kampusError);
+  if (LIVE.kampusMissing) return `<div class="empty-state">Daftar perguruan tinggi belum ter-cache (±${LIVE.kampusMissing} panggilan ≈ ${LIVE.kampusMissing * 2} kredit, lalu di-cache 7 hari).<br><br><button class="btn btn-primary" onclick="fetchKampus()">Muat data live</button></div>`;
+  return '';
+}
+function kampusFiltered() {
+  if (!LIVE.kampus) return null;
+  return LIVE.kampus.filter(k => (STATE.provinsi === 'all' || k.province_id === STATE.provinsi) && (STATE.kabupaten === 'all' || k.regency_id === STATE.kabupaten));
+}
+function kampusByProv() {
+  const m = {}; LIVE.provinces.forEach(p => m[p.id] = { id: p.id, name: shortProv(p.name), total: 0, PTN: 0, PTS: 0, PTA: 0, PTK: 0 });
+  let nullProv = 0;
+  (LIVE.kampus || []).forEach(k => { const r = m[k.province_id]; if (!r) { nullProv++; return; } r.total++; if (r[k.kelompok] !== undefined) r[k.kelompok]++; });
+  return { rows: Object.values(m), nullProv };
+}
+function countBy(arr, f) { const m = {}; (arr || []).forEach(x => { const k = f(x) ?? '(kosong)'; m[k] = (m[k] || 0) + 1; }); return m; }
+
+/* ---------- Beasiswa ---------- */
+async function loadBeasiswa() {
+  if (LIVE.beasiswa) return;
+  const j = await api('beasiswa?per_page=100');
+  LIVE.beasiswa = j.data; LIVE.beasiswaMeta = j.meta;
+}
+const BS_STATUS = { dibuka: ['Dibuka', 'badge-green'], segera_dibuka: ['Segera dibuka', 'badge-blue'], ditutup: ['Ditutup', 'badge-gray'], belum_diumumkan: ['Belum diumumkan', 'badge-yellow'] };
+function bsBadge(s) { const [t, c] = BS_STATUS[s] || [s, 'badge-gray']; return `<span class="badge ${c}">${t}</span>`; }
+function bsAttribution() {
+  const a = LIVE.beasiswaMeta?.attribution; if (!a) return 'API Indonesia /api/v1/beasiswa';
+  return `${esc(a.source)} · disusun oleh API Indonesia (<a href="${esc(a.attribution_page)}" target="_blank" rel="noopener">atribusi</a>). ${esc(a.notice || '')}`;
+}
+function beasiswaRelevant() {
+  let list = LIVE.beasiswa || [];
+  if (STATE.jenjang === 'SMA' || STATE.jenjang === 'SMK') list = list.filter(b => (b.jenjang || []).some(x => ['D3', 'D4', 'S1'].includes(x)));
+  return list;
+}
+
+/* ---------- Orkestrasi muat data sesuai filter ---------- */
+let renderTimer = null;
+function rerender() { clearTimeout(renderTimer); renderTimer = setTimeout(() => renderAllPages(), 60); }
+async function refreshData() {
+  const tasks = [
+    loadCounts().catch(e => LIVE.errors.push(e)),
+    loadBeasiswa().catch(e => { LIVE.beasiswaError = e; }),
+    loadKampus().catch(() => {}),
+    loadFan('prov', null),
+  ];
+  if (STATE.provinsi !== 'all') tasks.push(loadFan('kab', STATE.provinsi));
+  rerender();
+  await Promise.all(tasks.map(t => t.then(rerender)));
+  rerender();
+}
+
+/* ---------- Konteks data untuk AI (dari data LIVE) ---------- */
+function buildDataContext() {
+  const L = [];
+  L.push('KONTEKS DATA DASHBOARD PENDIDIKAN INDONESIA — DATA LIVE API INDONESIA');
+  L.push(`Wilayah: ${regionLabel()} | Jenjang: ${STATE.jenjang === 'all' ? 'Semua (SD/SMP/SMA/SMK/SLB)' : STATE.jenjang} | Status: ${STATE.status === 'all' ? 'Negeri & Swasta' : STATE.status} | Diambil: ${new Date().toLocaleDateString('id-ID')}`);
+  L.push('Catatan: indikator APK, APM, Skor AN, ATS, PISA, rasio guru, anggaran, kualifikasi guru TIDAK tersedia di data live ini.');
+  const c = LIVE.counts[filterKey(sekolahFilter())];
+  if (c) {
+    const tt = c.total - c.A - c.B - c.C;
+    L.push('', '=== SEKOLAH (filter aktif) ===');
+    L.push(`Total sekolah: ${c.total}; Akreditasi A: ${c.A} (${fmt(pct(c.A, c.total))}%), B: ${c.B} (${fmt(pct(c.B, c.total))}%), C: ${c.C} (${fmt(pct(c.C, c.total))}%), tanpa data akreditasi: ${tt} (${fmt(pct(tt, c.total))}%); Negeri: ${c.Negeri ?? '-'}`);
+  }
+  const fp = LIVE.fan[fanKey('prov', null)]?.rows;
+  const kp = LIVE.kampus ? kampusByProv() : null;
+  if (fp) {
+    L.push('', '=== PER PROVINSI (jumlah sekolah, % akreditasi A' + (kp ? ', jumlah PT, PTN' : '') + ') ===');
+    fp.forEach(r => { const k = kp?.rows.find(x => x.id === r.id); L.push(`${r.name}: sekolah ${r.total}, akreditasi A ${r.akredA === null ? 'tidak ada data (0 sekolah tercatat A)' : fmt(r.akredA) + '%'}${k ? `, PT ${k.total}, PTN ${k.PTN}, sekolah per PT ${k.total ? fmt(r.total / k.total) : '-'}` : ''}`); });
+  }
+  const fk = STATE.provinsi !== 'all' ? LIVE.fan[fanKey('kab', STATE.provinsi)]?.rows : null;
+  if (fk) { L.push('', `=== PER KAB/KOTA di ${provName(STATE.provinsi)} ===`); fk.forEach(r => L.push(`${r.name}: sekolah ${r.total}, akreditasi A ${r.akredA === null ? 'tidak ada data' : fmt(r.akredA) + '%'}`)); }
+  if (LIVE.kampus) {
+    const g = countBy(LIVE.kampus, k => k.kelompok);
+    L.push('', '=== PENDIDIKAN TINGGI (nasional) ===');
+    L.push(`Total PT aktif: ${LIVE.kampus.length}; ${Object.entries(g).map(([k, v]) => `${k} ${v}`).join(', ')}; tanpa kode provinsi: ${kp.nullProv}`);
+  }
+  if (LIVE.beasiswa) {
+    L.push('', '=== BEASISWA (status per hari ini, WIB) ===');
+    LIVE.beasiswa.filter(b => ['dibuka', 'segera_dibuka'].includes(b.status_pendaftaran)).forEach(b => L.push(`${b.nama} — ${b.status_pendaftaran}, jenjang ${(b.jenjang || []).join('/')}, ${b.lokasi_studi}, tutup ${b.periode_aktif?.tutup || '-'}`));
+    const sc = countBy(LIVE.beasiswa, b => b.status_pendaftaran);
+    L.push(`Ringkasan status ${LIVE.beasiswa.length} program: ${Object.entries(sc).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+  }
+  return L.join('\n');
+}
+
+/* ============================================================
+   SYSTEM PROMPTS & HALAMAN ANALISIS (Puter.js di browser)
+   ============================================================ */
+const SYSTEM_PROMPT_ANALISIS_DATA = (context) => `Anda adalah analis kebijakan pendidikan senior untuk dashboard pendidikan Indonesia. Tugas Anda adalah membantu pengguna memahami data LIVE yang ditampilkan di dashboard (bersumber dari API Indonesia: data sekolah Kemendikbud, perguruan tinggi PDDikti, beasiswa).
+
+ATURAN KETAT:
+1. JAWAB HANYA berdasarkan DATA KONTEKS di bawah. Jangan mengarang angka, tren, atau fakta yang tidak ada dalam konteks.
+2. Jika pengguna bertanya di luar cakupan data konteks (mis. APK, APM, Skor AN, PISA, ATS), katakan dengan jujur: "Data tersebut belum tersedia secara live di dashboard ini."
+3. Selalu sebutkan angka spesifik dari konteks saat membuat klaim.
+4. Bedakan dengan jelas antara: (a) apa yang ditunjukkan data, dan (b) interpretasi/hipotesis Anda.
+5. Ingat keterbatasan data: banyak sekolah belum memiliki data akreditasi, dan sebagian PT tidak memiliki kode provinsi. Sebutkan jika memengaruhi kesimpulan.
+6. Format jawaban menggunakan Markdown: heading (##, ###), bullet list (-), bold untuk angka penting, dan tabel jika membandingkan banyak wilayah. Maksimal 300 kata kecuali diminta lebih.
+7. Jangan pernah menyebut bahwa Anda adalah AI atau model bahasa. Anda adalah "analis dashboard".
+
+DATA KONTEKS:
+${context}`;
+
+const SYSTEM_PROMPT_EXTERNAL = `Anda adalah analis kebijakan pendidikan dengan pengetahuan luas tentang sistem pendidikan Indonesia dan global. Pengguna sedang menggunakan fitur "Analisis Lanjut" yang SECARA EKSPLISIT menggunakan pengetahuan Anda di luar data dashboard.
+
+ATURAN:
+1. Anda BOLEH merujuk pada kebijakan, regulasi, laporan internasional (PISA, Bank Dunia, UNESCO), dan tren global yang Anda ketahui.
+2. Namun, Anda HARUS menandai dengan jelas mana yang merupakan: (a) pengetahuan umum yang mapan, (b) estimasi/rentang yang mungkin berubah, atau (c) spekulasi/hipotesis. Gunakan label seperti "[Pengetahuan umum]", "[Estimasi]", "[Hipotesis]".
+3. JANGAN mengklaim angka spesifik terbaru seolah-olah Anda memiliki akses real-time. Jika angka berubah dari waktu ke waktu, sebutkan tahun atau sumber perkiraannya.
+4. Selalu ingatkan pengguna bahwa analisis ini TIDAK menggunakan data dashboard dan harus diverifikasi dengan sumber primer.
+5. Format jawaban menggunakan Markdown: heading (##, ###), bullet list (-), bold untuk penekanan. Maksimal 300 kata.
+6. Di awal jawaban pertama, sertakan kalimat: "Catatan: analisis ini menggunakan pengetahuan umum di luar data dashboard."`;
+
+function liveChat(userText, onChunk) {
+  return callPuterAI([{ role: 'system', content: SYSTEM_PROMPT_ANALISIS_DATA(buildDataContext()) }, { role: 'user', content: userText }], { onChunk });
+}
+function renderAnalisisData() {
+  const el = document.getElementById('page-analisis-data');
+  el.innerHTML = `<h2 class="page-title">🤖 Analisis Data</h2>
+    <p class="page-subtitle">Tanyakan apa pun tentang data <b>live</b> yang sedang ditampilkan (sekolah, akreditasi, perguruan tinggi, beasiswa). AI menjawab <b>hanya berdasarkan data konteks</b>.</p>
+    <div id="analisis-data-chat"></div>`;
+  createChatUI('analisis-data-chat', {
+    placeholder: 'Contoh: Provinsi mana yang persentase sekolah berakreditasi A-nya paling rendah?',
+    welcomeText: 'Halo. Saya adalah **analis dashboard**. Konteks saya adalah **data live API Indonesia** sesuai filter yang aktif.\n\nSilakan bertanya tentang **jumlah & akreditasi sekolah**, **perbandingan provinsi**, **perguruan tinggi**, atau **beasiswa yang sedang dibuka**.',
+    onSend: liveChat,
+  });
+}
+const PREDEFINED_ANALYSES = [
+  { id: 'akreditasi-gap', title: 'Ketimpangan Akreditasi Antarprovinsi', desc: 'Membandingkan % sekolah berakreditasi A antarprovinsi dan mengidentifikasi wilayah tertinggal.',
+    prompt: `Berdasarkan data per provinsi (jumlah sekolah dan % akreditasi A), lakukan analisis ketimpangan:
+1. Sebutkan rentang (max-min) dan rata-rata sederhana % akreditasi A.
+2. Identifikasi 5 provinsi terendah dan 5 tertinggi (tabel Markdown).
+3. Apakah ada pola geografis (Papua, Nusa Tenggara, Jawa, dll.)?
+4. Jelaskan keterbatasan data (sekolah tanpa data akreditasi).
+Akhiri dengan **3 rekomendasi kebijakan** yang spesifik.` },
+  { id: 'akses-pt', title: 'Akses Pendidikan Tinggi per Provinsi', desc: 'Membandingkan jumlah sekolah dengan jumlah perguruan tinggi (PTN/PTS) di tiap provinsi.',
+    prompt: `Berdasarkan data jumlah sekolah, jumlah PT, dan PTN per provinsi:
+1. Hitung dan urutkan rasio "sekolah per PT"; tampilkan 5 provinsi dengan rasio tertinggi (akses PT paling terbatas) dalam tabel.
+2. Provinsi mana yang PTN-nya paling sedikit?
+3. Sebutkan dampak PT tanpa kode provinsi terhadap analisis.
+4. Berikan **3 rekomendasi** perluasan akses pendidikan tinggi.` },
+  { id: 'beasiswa', title: 'Peluang Beasiswa Saat Ini', desc: 'Merangkum beasiswa yang sedang/segera dibuka dan mencocokkannya dengan wilayah yang aksesnya rendah.',
+    prompt: `Berdasarkan data beasiswa (status hari ini) dan data akses PT per provinsi:
+1. Daftar beasiswa yang dibuka/segera dibuka dalam tabel (nama, jenjang, lokasi studi, tanggal tutup).
+2. Beasiswa mana yang paling relevan untuk lulusan SMA/SMK di provinsi dengan akses PT terbatas?
+3. Usulkan **3 aksi sosialisasi** konkret untuk sekolah/pemda.` },
+  { id: 'early-warning', title: 'Prioritas Intervensi (Early Warning)', desc: 'Menyusun prioritas wilayah berdasarkan akreditasi A rendah dan akses PT terbatas.',
+    prompt: `Gunakan data per provinsi untuk menyusun prioritas intervensi:
+1. Beri skor sederhana: akreditasi A jauh di bawah rata-rata, rasio sekolah per PT tinggi, PTN sedikit.
+2. Sajikan 7 provinsi prioritas dalam tabel dengan alasan.
+3. Bedakan apa yang ditunjukkan data vs hipotesis penyebabnya.
+4. Berikan **3 rekomendasi** intervensi.` },
+  { id: 'kualitas-data', title: 'Kelengkapan & Kualitas Data', desc: 'Menilai celah data (akreditasi kosong, PT tanpa provinsi) dan dampaknya bagi kebijakan berbasis data.',
+    prompt: `Nilai kelengkapan data dalam konteks:
+1. Berapa proporsi sekolah tanpa data akreditasi? Berapa PT tanpa kode provinsi?
+2. Indikator apa yang belum tersedia secara live (sebutkan dari konteks)?
+3. Apa risikonya bagi pengambilan keputusan?
+4. Usulkan **3 langkah** perbaikan ekosistem data (DPI) pendidikan.` },
+];
+function renderPredefined() {
+  const el = document.getElementById('page-analisis-predefined');
+  el.innerHTML = `<h2 class="page-title">📋 Pre-defined Analysis</h2>
+    <p class="page-subtitle">Pilih salah satu analisis di bawah. AI akan menggunakan <b>data live dashboard</b> sesuai filter aktif.</p>
+    <div class="predefined-grid">${PREDEFINED_ANALYSES.map(a => `<div class="predefined-card" data-analysis-id="${a.id}"><h3>${a.title}</h3><p>${a.desc}</p></div>`).join('')}</div>
+    <div id="predefined-chat" class="mt-16"></div>`;
+  const chat = createChatUI('predefined-chat', {
+    placeholder: 'Pilih analisis di atas, atau ketik pertanyaan lanjutan…',
+    systemNote: 'Pilih salah satu kartu analisis untuk memulai. AI akan menjawab berdasarkan data konteks live.',
+    onSend: liveChat,
+  });
+  document.querySelectorAll('.predefined-card').forEach(card => card.addEventListener('click', () => {
+    document.querySelectorAll('.predefined-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    const a = PREDEFINED_ANALYSES.find(x => x.id === card.dataset.analysisId);
+    if (a) chat.sendMessage(`**[${a.title}]**\n\n${a.prompt}`, a.prompt);
+  }));
+}
+function renderAnalisisLanjut() {
+  const el = document.getElementById('page-analisis-lanjut');
+  el.innerHTML = `<h2 class="page-title">🧠 Analisis Lanjut</h2>
+    <p class="page-subtitle">Analisis yang menggunakan <b>pengetahuan umum AI di luar data dashboard</b>.</p>
+    <div class="warning-box"><strong>⚠️ Perhatian:</strong> Fitur ini <b>tidak menggunakan data dashboard</b>. AI akan menjawab berdasarkan pengetahuan umum, kebijakan publik, laporan internasional, dan tren global yang dikenalinya. Angka dan klaim <b>harus diverifikasi</b> dengan sumber primer. Gunakan halaman <b>Analisis Data</b> atau <b>Pre-defined Analysis</b> jika Anda memerlukan analisis yang terikat pada data dashboard.</div>
+    <div id="analisis-lanjut-chat"></div>`;
+  createChatUI('analisis-lanjut-chat', {
+    placeholder: 'Contoh: Bagaimana kebijakan pendidikan Finlandia dibandingkan Indonesia?',
+    systemNote: 'Mode ini menggunakan pengetahuan umum di luar data dashboard. Verifikasi klaim dengan sumber primer.',
+    welcomeText: 'Selamat datang di **Analisis Lanjut**. Saya dapat membahas kebijakan pendidikan dari berbagai negara, tren global, regulasi, dan literatur — tanpa terikat pada data dashboard.\n\n**Ingat**: pengetahuan saya memiliki batas waktu dan harus diverifikasi.',
+    onSend: async (userText, onChunk) => callPuterAI([{ role: 'system', content: SYSTEM_PROMPT_EXTERNAL }, { role: 'user', content: userText }], { onChunk }),
+  });
+}
+
+/* ============================================================
+   RENDERERS — halaman LIVE
+   ============================================================ */
+function kpiCard(label, value, sub = '', cls = 'status-good', unit = '') {
+  return `<div class="kpi"><div class="kpi-status ${cls}"></div><div class="kpi-label">${label}</div>
+    <div class="kpi-value">${value}<span style="font-size:14px;color:#64748b;font-weight:500"> ${unit}</span></div>
+    <div class="kpi-target">${sub}</div></div>`;
+}
+function heatRows(rows, metric, { unit = '', dec = 1, invert = false, highlightId = null } = {}) {
+  const vals = rows.map(r => r[metric]).filter(v => v !== null && v !== undefined);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  return `<div class="heatmap-grid">${rows.map(p => {
+    const v = p[metric], hi = highlightId && p.id === highlightId ? ' highlighted' : '';
+    if (v === null || v === undefined) return `<div class="heat-cell${hi}" style="background:#94a3b8" title="${esc(p.name)}: data akreditasi tidak tersedia di sumber"><div class="heat-cell-name">${esc(p.name)}</div><div class="heat-cell-value" style="font-size:11px">tanpa data</div></div>`;
+    const t = (v - min) / (max - min || 1), score = invert ? 1 - t : t;
+    const r = Math.round(220 - score * 200), g = Math.round(50 + score * 130), b = Math.round(80 - score * 30);
+    return `<div class="heat-cell${hi}" style="background:rgb(${r},${g},${b})" title="${esc(p.name)}: ${fmt(v, dec)}${unit}"><div class="heat-cell-name">${esc(p.name)}</div><div class="heat-cell-value">${fmt(v, dec)}${unit}</div></div>`;
+  }).join('')}</div>${vals.length < rows.length ? `<div class="note">Abu-abu = tidak ada satu pun sekolah tercatat berakreditasi A di sumber (kemungkinan kolom akreditasi kosong untuk wilayah ini), bukan berarti 0%.</div>` : ''}`;
+}
+function akreditasiDonut(c) {
+  if (!c) return loading();
+  if (!c.total) return '<div class="empty-state">Tidak ada sekolah untuk filter ini</div>';
+  const tt = Math.max(0, c.total - c.A - c.B - c.C);
+  const seg = [{ k: 'A', v: c.A, color: '#059669' }, { k: 'B', v: c.B, color: '#3b82f6' }, { k: 'C', v: c.C, color: '#d97706' }, { k: 'Belum ada data', v: tt, color: '#cbd5e1' }];
+  return `<div class="donut-wrap">${donutChart(seg.map(s => ({ value: s.v || 0.0001, color: s.color })))}<div class="donut-legend">${seg.map(s => `<div class="legend-item"><div class="legend-dot" style="background:${s.color}"></div>${s.k}: ${s.v.toLocaleString('id-ID')} (${fmt(pct(s.v, c.total))}%)</div>`).join('')}</div></div>`;
+}
+function schoolSrc() {
+  const s = LIVE.schoolSource;
+  return s ? `${esc(s.name)} (<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a>)${s.synced ? ', sinkron ' + esc(String(s.synced).slice(0, 10)) : ''} via API Indonesia` : SRC.sekolah;
+}
+const KEL = { PTN: 'negeri', PTS: 'swasta', PTA: 'agama', PTK: 'kedinasan' };
+
+function renderBeranda() {
+  const c = LIVE.counts[filterKey(sekolahFilter())];
+  const kf = kampusFiltered();
+  const open = (LIVE.beasiswa || []).filter(b => b.status_pendaftaran === 'dibuka').length;
+  const soon = (LIVE.beasiswa || []).filter(b => b.status_pendaftaran === 'segera_dibuka').length;
+  const tt = c ? c.total - c.A - c.B - c.C : 0;
+  const cards = [
+    kpiCard('Jumlah Sekolah', c ? c.total.toLocaleString('id-ID') : '…', `${regionLabel()} · ${STATE.jenjang === 'all' ? 'SD–SLB' : STATE.jenjang}`),
+    kpiCard('Sekolah Akreditasi A', c ? fmt(pct(c.A, c.total)) : '…', c ? `${c.A.toLocaleString('id-ID')} sekolah` : '', c && pct(c.A, c.total) >= 30 ? 'status-good' : 'status-warn', '%'),
+    kpiCard('Tanpa Data Akreditasi', c ? fmt(pct(tt, c.total)) : '…', 'kualitas data sumber', 'status-bad', '%'),
+    kpiCard('Sekolah Negeri', c && c.Negeri !== undefined ? fmt(pct(c.Negeri, c.total)) : '…', c ? `${(c.Negeri || 0).toLocaleString('id-ID')} sekolah` : '', 'status-good', '%'),
+    kpiCard('Perguruan Tinggi', kf ? kf.length.toLocaleString('id-ID') : '…', kf ? `PTN ${kf.filter(k => k.kelompok === 'PTN').length} · PTS ${kf.filter(k => k.kelompok === 'PTS').length}` : 'memuat…'),
+    kpiCard('Beasiswa Dibuka', LIVE.beasiswa ? open : '…', LIVE.beasiswa ? `+${soon} segera dibuka · dari ${LIVE.beasiswa.length}` : '', open ? 'status-good' : 'status-warn'),
+  ].join('');
+  const rows = LIVE.fan[fanKey('prov', null)]?.rows;
+  let heat = fanControl('prov', null), top = '', bottom = '';
+  if (rows) {
+    heat = heatRows(rows, 'akredA', { unit: '%', dec: 1, highlightId: STATE.provinsi === 'all' ? null : STATE.provinsi });
+    const s = rows.filter(r => r.akredA !== null).sort((a, b) => b.akredA - a.akredA);
+    top = barChart(s.slice(0, 5).map(p => ({ label: p.name, value: p.akredA, color: p.id === STATE.provinsi ? '#1e40af' : '#059669' })), { unit: '%' });
+    bottom = barChart(s.slice(-5).reverse().map(p => ({ label: p.name, value: p.akredA, color: p.id === STATE.provinsi ? '#1e40af' : '#dc2626' })), { unit: '%', max: s[0].akredA });
+  }
+  const g = kf ? countBy(kf, k => k.kelompok) : null;
+  return `<h2 class="page-title">Beranda ${liveBadge()}</h2><p class="page-subtitle">Ringkasan pendidikan · ${regionLabel()} · data live API Indonesia</p>
+  <div class="grid grid-6 mb-16">${cards}</div>
+  ${srcNote(schoolSrc())}
+  <div class="grid grid-2 mt-16">
+    <div class="card"><div class="card-title">Peta % Sekolah Akreditasi A per Provinsi ${liveBadge()}<span class="card-subtitle">${STATE.jenjang === 'all' ? 'semua jenjang' : STATE.jenjang}${STATE.status === 'all' ? '' : ' · ' + STATE.status}</span></div>${heat}</div>
+    <div class="card"><div class="card-title">Komposisi Akreditasi ${liveBadge()}<span class="card-subtitle">${regionLabel()}</span></div>${akreditasiDonut(c)}
+      <div class="note">Sebagian besar sekolah belum memiliki data akreditasi di sumber; persentase dihitung terhadap seluruh sekolah.</div></div>
+  </div>
+  <div class="grid grid-2 mt-16">
+    <div class="card"><div class="card-title">Top 5 Provinsi (% Akreditasi A)</div>${rows ? top : '<div class="empty-state">—</div>'}</div>
+    <div class="card"><div class="card-title">Bottom 5 Provinsi (% Akreditasi A)<span class="card-subtitle">hanya provinsi yang punya data akreditasi</span></div>${rows ? bottom : '<div class="empty-state">—</div>'}</div>
+  </div>
+  <div class="card mt-16"><div class="card-title">🎓 Sorotan Pendidikan Tinggi ${liveBadge()}<span class="card-subtitle">${regionLabel()}</span></div>
+    ${g ? `<div class="grid grid-4">${['PTN', 'PTS', 'PTA', 'PTK'].map(k => kpiCard(k, (g[k] || 0).toLocaleString('id-ID'), KEL[k])).join('')}</div>${srcNote(SRC.kampus)}` : (kampusControl() || loading())}
+  </div>
+  <div class="card mt-16 dummy-card"><div class="card-title">Indikator belum live ${dummyBadge()}</div>
+    <div class="text-sm text-muted">APK, APM, Skor AN, Rasio Siswa-Guru, Anak Tidak Sekolah, APK PT, PISA, anggaran, dan kualifikasi guru <b>tidak tersedia</b> di API Indonesia. Halaman Partisipasi, Mutu, Guru, Pendanaan, ATS, dan PISA masih menampilkan angka contoh berlabel <b>CONTOH / DUMMY</b>. Data belum live — sumber: Dapodik, Rapor Pendidikan, BPS, PDDikti, OECD.</div></div>`;
+}
+
+function renderPemerataan() {
+  const c = LIVE.counts[filterKey(sekolahFilter())];
+  const fp = LIVE.fan[fanKey('prov', null)]?.rows;
+  const fk = STATE.provinsi !== 'all' ? LIVE.fan[fanKey('kab', STATE.provinsi)] : null;
+  let kabHtml = '';
+  if (STATE.provinsi !== 'all') {
+    kabHtml = `<div class="card mt-16"><div class="card-title">% Akreditasi A per Kab/Kota — ${esc(provName(STATE.provinsi))} ${liveBadge()}</div>
+      ${fk?.rows ? heatRows(fk.rows, 'akredA', { unit: '%', highlightId: STATE.kabupaten === 'all' ? null : STATE.kabupaten }) +
+        `<div class="table-wrap mt-16"><table><thead><tr><th>Kab/Kota</th><th>Jumlah Sekolah</th><th>Akreditasi A</th><th>% A</th></tr></thead><tbody>${[...fk.rows].sort((a, b) => (a.akredA ?? -1) - (b.akredA ?? -1)).map(r => `<tr${r.id === STATE.kabupaten ? ' class="highlighted"' : ''}><td>${esc(r.name)}</td><td>${r.total.toLocaleString('id-ID')}</td><td>${r.A.toLocaleString('id-ID')}</td><td>${r.akredA === null ? 'tanpa data' : fmt(r.akredA) + '%'}</td></tr>`).join('')}</tbody></table></div>`
+        : fanControl('kab', STATE.provinsi)}${srcNote(schoolSrc())}</div>`;
+  }
+  return `<h2 class="page-title">Pemerataan ${liveBadge()}</h2><p class="page-subtitle">Merata atau timpang? · ${regionLabel()}</p>
+  <div class="grid grid-2">
+    <div class="card"><div class="card-title">Akreditasi Sekolah ${liveBadge()}</div>${akreditasiDonut(c)}${srcNote(schoolSrc())}</div>
+    <div class="card"><div class="card-title">% Akreditasi A per Provinsi ${liveBadge()}</div>${fp ? heatRows(fp, 'akredA', { unit: '%', highlightId: STATE.provinsi === 'all' ? null : STATE.provinsi }) : fanControl('prov', null)}</div>
+  </div>
+  ${kabHtml}
+  <div class="card mt-16 dummy-card"><div class="card-title">Rasio Siswa-Guru ${dummyBadge()}<span class="card-subtitle">Data belum live — sumber: Dapodik</span></div>${heatmap('rasio', { invert: true, unit: ':1' })}</div>`;
+}
+
+function renderDikti() {
+  if (!LIVE.kampus) return `<h2 class="page-title">Pendidikan Tinggi ${liveBadge()}</h2><p class="page-subtitle">Perguruan tinggi aktif.</p><div class="card">${kampusControl() || loading()}</div>`;
+  const kf = kampusFiltered(), g = countBy(kf, k => k.kelompok), jenis = countBy(kf, k => k.jenis), akr = countBy(kf, k => k.accreditation);
+  const { rows, nullProv } = kampusByProv();
+  const d = DATA.dikti;
+  const list = STATE.provinsi === 'all' ? '' : `<div class="card mt-16"><div class="card-title">Daftar Perguruan Tinggi — ${regionLabel()} ${liveBadge()}<span class="card-subtitle">${kf.length} PT</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Nama</th><th>Singkatan</th><th>Kelompok</th><th>Bentuk</th><th>Kab/Kota</th><th>Akreditasi</th></tr></thead><tbody>
+    ${[...kf].sort((a, b) => String(a.kelompok).localeCompare(b.kelompok) || a.name.localeCompare(b.name)).map(k => `<tr><td>${esc(k.name)}</td><td>${esc(k.short_name || '')}</td><td><span class="badge ${k.kelompok === 'PTN' ? 'badge-green' : 'badge-blue'}">${esc(k.kelompok)}</span></td><td>${esc(k.jenis || '')}</td><td>${esc(k.regency_name || '-')}</td><td>${esc(k.accreditation || '-')}</td></tr>`).join('')}
+    </tbody></table></div></div>`;
+  return `<h2 class="page-title">Pendidikan Tinggi ${liveBadge()}</h2><p class="page-subtitle">Perguruan tinggi aktif · ${regionLabel()}</p>
+  <div class="grid grid-6 mb-16">
+    ${kpiCard('Total PT', kf.length.toLocaleString('id-ID'), regionLabel())}
+    ${['PTN', 'PTS', 'PTA', 'PTK'].map(k => kpiCard(k, (g[k] || 0).toLocaleString('id-ID'), KEL[k])).join('')}
+    ${kpiCard('Tanpa Kode Provinsi', nullProv.toLocaleString('id-ID'), `${fmt(pct(nullProv, LIVE.kampus.length))}% dari ${LIVE.kampus.length.toLocaleString('id-ID')} (nasional)`, 'status-bad')}
+  </div>
+  ${srcNote(SRC.kampus)}
+  <div class="grid grid-2 mt-16">
+    <div class="card"><div class="card-title">Bentuk PT ${liveBadge()}</div>${barChart(Object.entries(jenis).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ label: k, value: v, color: '#3b82f6' })), { formatter: v => fmt(v, 0) })}</div>
+    <div class="card"><div class="card-title">Jumlah PT per Provinsi ${liveBadge()}<span class="card-subtitle">${nullProv} PT tanpa kode provinsi tidak terpetakan</span></div>${heatRows(rows, 'total', { unit: '', dec: 0, highlightId: STATE.provinsi === 'all' ? null : STATE.provinsi })}</div>
+  </div>
+  <div class="card mt-16"><div class="card-title">Akreditasi Institusi ${liveBadge()}</div>${barChart(Object.entries(akr).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ label: k, value: v, color: k === '(kosong)' ? '#cbd5e1' : '#059669' })), { formatter: v => fmt(v, 0) })}
+    <div class="note">"(kosong)" berarti kolom akreditasi belum terisi di sumber data.</div></div>
+  ${list}
+  <div class="card mt-16 dummy-card"><div class="card-title">APK PT, Mahasiswa, Dosen, TPT Lulusan ${dummyBadge()}<span class="card-subtitle">Data belum live — sumber: BPS (APK PT, TPT), PDDikti (mahasiswa, dosen)</span></div>
+    <div class="grid grid-4">${kpiCard('APK PT', fmt(d.apk, 2), 'contoh', 'status-bad', '%')}${kpiCard('Mahasiswa', fmt(d.mahasiswa / 1e6, 2), 'contoh', 'status-warn', 'jt')}${kpiCard('Dosen', fmt(d.dosen / 1000, 1), 'contoh', 'status-warn', 'rb')}${kpiCard('TPT Lulusan', fmt(d.tptUniversitas, 2), 'contoh', 'status-bad', '%')}</div></div>`;
+}
+
+function earlyWarningRows() {
+  const fp = LIVE.fan[fanKey('prov', null)]?.rows;
+  if (!fp || !LIVE.kampus) return null;
+  const { rows: kp } = kampusByProv();
+  const withA = fp.filter(r => r.akredA !== null);
+  const totS = fp.reduce((s, r) => s + r.total, 0), totPT = kp.reduce((s, r) => s + r.total, 0);
+  const natA = pct(withA.reduce((s, r) => s + r.A, 0), withA.reduce((s, r) => s + r.total, 0)), natRatio = totS / (totPT || 1);
+  return fp.map(r => {
+    const k = kp.find(x => x.id === r.id) || { total: 0, PTN: 0 };
+    const ratio = k.total ? r.total / k.total : Infinity;
+    let score = 0; const flags = [];
+    if (r.akredA === null) { score += 1; flags.push('Data akreditasi kosong'); }
+    else if (r.akredA < natA * 0.5) { score += 3; flags.push('Akreditasi A sangat rendah'); } else if (r.akredA < natA * 0.8) { score += 2; flags.push('Akreditasi A rendah'); }
+    if (ratio > natRatio * 2) { score += 3; flags.push('Akses PT sangat terbatas'); } else if (ratio > natRatio * 1.3) { score += 2; flags.push('Akses PT terbatas'); }
+    if (k.PTN === 0) { score += 2; flags.push('Tanpa PTN'); }
+    if (k.total < 15) { score += 1; flags.push('PT < 15'); }
+    return { ...r, pt: k.total, ptn: k.PTN, ratio, score, flags };
+  }).sort((a, b) => b.score - a.score || (a.akredA ?? 999) - (b.akredA ?? 999));
+}
+function renderEarlyWarning() {
+  const rows = earlyWarningRows();
+  let table;
+  if (!rows) table = fanControl('prov', null) || kampusControl() || loading();
+  else {
+    const filtered = STATE.provinsi === 'all' ? rows : rows.filter(p => p.id === STATE.provinsi);
+    table = `<div class="table-wrap"><table><thead><tr><th>Rank</th><th>Provinsi</th><th>Skor</th><th>% Akred. A</th><th>Sekolah / PT</th><th>PTN</th><th>Indikator</th></tr></thead><tbody>
+    ${filtered.map(p => `<tr${p.id === STATE.provinsi ? ' class="highlighted"' : ''}><td><b>${rows.indexOf(p) + 1}</b></td><td>${esc(p.name)}</td><td><span class="badge ${p.score >= 6 ? 'badge-red' : p.score >= 3 ? 'badge-yellow' : 'badge-green'}">${p.score}</span></td><td>${p.akredA === null ? '<span class="text-muted">tanpa data</span>' : fmt(p.akredA) + '%'}</td><td>${Number.isFinite(p.ratio) ? fmt(p.ratio, 0) : '∞'}</td><td>${p.ptn}</td><td>${p.flags.map(f => `<span class="badge badge-red" style="margin-right:4px">${f}</span>`).join('') || '<span class="badge badge-green">-</span>'}</td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="note">Skor dihitung dari data live: % akreditasi A dibanding rata-rata nasional, rasio sekolah per perguruan tinggi, keberadaan PTN, dan jumlah PT. Indikator APK/APM/Skor AN/ATS belum dipakai karena belum tersedia live.${STATE.jenjang !== 'all' || STATE.status !== 'all' ? ' Filter jenjang/status ikut memengaruhi data sekolah.' : ''}</div>`;
+  }
+  const bs = beasiswaRelevant().filter(b => ['dibuka', 'segera_dibuka'].includes(b.status_pendaftaran));
+  const bsAll = LIVE.beasiswa || [];
+  const bsTable = LIVE.beasiswaError ? errBox(LIVE.beasiswaError) : !LIVE.beasiswa ? loading() : `
+    <div class="table-wrap"><table><thead><tr><th>Program</th><th>Penyelenggara</th><th>Jenjang</th><th>Lokasi</th><th>Status</th><th>Periode</th></tr></thead><tbody>
+    ${[...bs, ...bsAll.filter(b => !bs.includes(b))].map(b => `<tr><td><a href="${esc(b.url_resmi)}" target="_blank" rel="noopener">${esc(b.nama)}</a></td><td class="text-sm">${esc(b.penyelenggara)}</td><td>${esc((b.jenjang || []).join(', '))}</td><td>${esc((b.lokasi_studi || '').replace('_', ' '))}</td><td>${bsBadge(b.status_pendaftaran)}</td><td class="text-sm">${b.periode_aktif ? `${esc(b.periode_aktif.buka)} → ${esc(b.periode_aktif.tutup)}` : '<span class="text-muted">belum ada jadwal</span>'}</td></tr>`).join('')}
+    </tbody></table></div>${srcNote(bsAttribution())}`;
+  return `<h2 class="page-title">Early Warning ${liveBadge()}</h2><p class="page-subtitle">Prioritas intervensi berbasis data live + aksi beasiswa.</p>
+  <div class="card"><div class="card-title">Prioritas Provinsi ${liveBadge()}</div>${table}${srcNote(schoolSrc() + ' · ' + SRC.kampus)}</div>
+  <div class="card mt-16"><div class="card-title">🎯 Aksi: Beasiswa ${liveBadge()}<span class="card-subtitle">${bs.length} dibuka/segera dibuka${STATE.jenjang === 'SMA' || STATE.jenjang === 'SMK' ? ' untuk lulusan SMA/SMK (D3–S1)' : ''} · status dihitung harian (WIB)</span></div>${bsTable}</div>`;
+}
+
+/* ---------- Profil Sekolah (live: pencarian, paginasi, peta, detail) ---------- */
+const SK = { q: '', akred: 'all', page: 1, perPage: 100, data: null, meta: null, loading: false, error: null, key: '' };
+function sekolahQueryKey() { return JSON.stringify([sekolahFilter(), SK.q, SK.akred, SK.page]); }
+async function loadSekolahList() {
+  const key = sekolahQueryKey();
+  if (SK.key === key && (SK.data || SK.loading)) return;
+  SK.key = key; SK.loading = true; SK.error = null; renderSekolahResults();
+  try {
+    const j = await api('sekolah' + qs({ ...sekolahFilter(), q: SK.q.length >= 2 ? SK.q : '', accreditation: SK.akred, page: SK.page, per_page: SK.perPage }));
+    if (SK.key !== key) return;
+    SK.data = j.data; SK.meta = j.meta; (j.data || []).forEach(noteSchoolSource);
+  } catch (e) { SK.error = e; SK.data = null; }
+  SK.loading = false; renderSekolahResults();
+}
+function renderSekolah() {
+  return `<h2 class="page-title">Profil Sekolah ${liveBadge()}</h2><p class="page-subtitle">Cari sekolah berdasarkan awalan nama atau NPSN · filter wilayah/jenjang/status dari bar atas.</p>
+  <div class="card">
+    <div class="search-box"><input id="sk-q" placeholder="Awalan nama sekolah (min. 2 huruf) atau NPSN…" value="${esc(SK.q)}">
+      <select id="sk-akred" class="btn"><option value="all">Semua akreditasi</option>${['A', 'B', 'C'].map(a => `<option value="${a}"${SK.akred === a ? ' selected' : ''}>Akreditasi ${a}</option>`).join('')}</select>
+      <button class="btn btn-primary" id="sk-go">Cari</button></div>
+    <div id="sk-results">${loading()}</div>
+  </div>
+  <div class="grid grid-2 mt-16">
+    <div class="card"><div class="card-title">Peta Sekolah (halaman ini) ${liveBadge()}</div><div id="sk-map" style="height:380px;border-radius:8px"></div><div class="note">Peta © OpenStreetMap contributors. Titik dari koordinat lat/lng tiap sekolah.</div></div>
+    <div class="card"><div class="card-title">Detail Sekolah ${liveBadge()}</div><div id="sk-detail"><div class="empty-state">Klik baris sekolah untuk melihat detail.</div></div></div>
+  </div>`;
+}
+function bindSekolah() {
+  const go = () => { SK.q = document.getElementById('sk-q').value.trim(); SK.akred = document.getElementById('sk-akred').value; SK.page = 1; loadSekolahList(); };
+  document.getElementById('sk-go').onclick = go;
+  document.getElementById('sk-q').onkeydown = e => { if (e.key === 'Enter') go(); };
+  document.getElementById('sk-akred').onchange = go;
+  initMap();
+  SK.key = ''; loadSekolahList();
+}
+let MAP = null, MAPLAYER = null;
+function initMap() {
+  if (!window.L) return;
+  if (MAP) { MAP.remove(); MAP = null; }
+  MAP = L.map(document.getElementById('sk-map')).setView([-2.5, 118], 4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(MAP);
+  MAPLAYER = L.layerGroup().addTo(MAP);
+}
+function renderSekolahResults() {
+  const el = document.getElementById('sk-results'); if (!el) return;
+  if (SK.loading) { el.innerHTML = loading('Memuat daftar sekolah…'); return; }
+  if (SK.error) { el.innerHTML = errBox(SK.error); return; }
+  if (!SK.data) { el.innerHTML = ''; return; }
+  const m = SK.meta || {};
+  el.innerHTML = `<div class="flex-between mb-16 text-sm"><div><b>${(m.total || 0).toLocaleString('id-ID')}</b> sekolah · ${regionLabel()}${STATE.jenjang !== 'all' ? ' · ' + STATE.jenjang : ''}${STATE.status !== 'all' ? ' · ' + STATE.status : ''}</div>
+    <div class="flex gap-8"><button class="btn" id="sk-prev" ${SK.page <= 1 ? 'disabled' : ''}>‹ Sebelumnya</button><span style="padding:6px">Hal. ${m.page || 1} / ${(m.total_pages || 1).toLocaleString('id-ID')}</span><button class="btn" id="sk-next" ${SK.page >= (m.total_pages || 1) ? 'disabled' : ''}>Berikutnya ›</button></div></div>
+    <div class="table-wrap"><table><thead><tr><th>NPSN</th><th>Nama</th><th>Jenjang</th><th>Status</th><th>Akreditasi</th><th>Alamat</th></tr></thead><tbody>
+    ${SK.data.map(s => `<tr class="sk-row" data-npsn="${esc(s.npsn)}" style="cursor:pointer"><td>${esc(s.npsn)}</td><td>${esc(s.name)}</td><td>${esc(s.jenis)}</td><td>${esc(s.status)}</td><td><span class="badge ${s.accreditation === 'A' ? 'badge-green' : s.accreditation ? 'badge-yellow' : 'badge-gray'}">${esc(s.accreditation || '—')}</span></td><td class="text-sm">${esc(s.address || '')}</td></tr>`).join('') || '<tr><td colspan="6" class="empty-state">Tidak ada hasil</td></tr>'}
+    </tbody></table></div>${srcNote(schoolSrc())}`;
+  document.getElementById('sk-prev').onclick = () => { SK.page--; loadSekolahList(); };
+  document.getElementById('sk-next').onclick = () => { SK.page++; loadSekolahList(); };
+  el.querySelectorAll('.sk-row').forEach(tr => tr.onclick = () => showSchoolDetail(tr.dataset.npsn));
+  if (MAP && MAPLAYER) {
+    MAPLAYER.clearLayers(); const pts = [];
+    SK.data.forEach(s => { if (s.lat && s.lng) { pts.push([s.lat, s.lng]); L.circleMarker([s.lat, s.lng], { radius: 5, color: s.accreditation === 'A' ? '#059669' : '#1e40af', weight: 1, fillOpacity: 0.7 }).bindPopup(`<b>${esc(s.name)}</b><br>NPSN ${esc(s.npsn)} · ${esc(s.jenis)} ${esc(s.status)}<br>Akreditasi: ${esc(s.accreditation || '—')}`).addTo(MAPLAYER); } });
+    setTimeout(() => { MAP.invalidateSize(); if (pts.length) MAP.fitBounds(pts, { padding: [20, 20], maxZoom: 13 }); }, 50);
+  }
+}
+async function showSchoolDetail(npsn) {
+  const el = document.getElementById('sk-detail'); el.innerHTML = loading('Memuat detail…');
+  try {
+    const j = await api('sekolah/' + encodeURIComponent(npsn)); const s = j.data || {};
+    noteSchoolSource(s);
+    const rows = [['NPSN', s.npsn], ['Nama', s.name], ['Jenjang', s.jenis], ['Status', s.status], ['Akreditasi', s.accreditation || '— (belum ada data)'], ['Alamat', s.address], ['Desa/Kel.', s.village_name], ['Kecamatan', s.district_name], ['Kab/Kota', s.regency_name], ['Provinsi', s.province_name], ['Kode pos', s.postal_code], ['Telepon', s.phone], ['Email', s.email], ['Website', s.website], ['Koordinat', s.lat ? `${s.lat}, ${s.lng}` : null], ['Sumber', s.source_name ? `${s.source_name}${s.source_synced_at ? ' (sinkron ' + String(s.source_synced_at).slice(0, 10) + ')' : ''}` : '(tidak dicantumkan pada record)']];
+    el.innerHTML = `<table><tbody>${rows.map(([k, v]) => `<tr><td class="text-muted" style="width:120px">${k}</td><td>${esc(v ?? '-')}</td></tr>`).join('')}</tbody></table>`;
+    if (MAP && s.lat) MAP.setView([s.lat, s.lng], 15);
+  } catch (e) { el.innerHTML = errBox(e); }
+}
+
+/* ---------- Data Explorer (live) ---------- */
+function explorerRows() {
+  const fp = LIVE.fan[fanKey('prov', null)]?.rows; if (!fp) return null;
+  const kp = LIVE.kampus ? kampusByProv().rows : null;
+  return fp.map(r => { const k = kp?.find(x => x.id === r.id); return { kode: r.id, provinsi: r.name, sekolah: r.total, akredA: r.A, pctA: r.akredA, pt: k?.total ?? null, ptn: k?.PTN ?? null, pts: k?.PTS ?? null, pta: k?.PTA ?? null, ptk: k?.PTK ?? null }; });
+}
+function renderExplorer() {
+  const rows = explorerRows();
+  if (!rows) return `<h2 class="page-title">Data Explorer ${liveBadge()}</h2><p class="page-subtitle">Data mentah per provinsi sesuai filter.</p><div class="card">${fanControl('prov', null) || loading()}</div>`;
+  const act = STATE.provinsi === 'all' ? rows : rows.filter(r => r.kode === STATE.provinsi);
+  return `<h2 class="page-title">Data Explorer ${liveBadge()}</h2><p class="page-subtitle">Data mentah per provinsi · jenjang ${STATE.jenjang === 'all' ? 'semua' : STATE.jenjang} · ${STATE.status === 'all' ? 'negeri & swasta' : STATE.status}. Tombol <b>⬇ Ekspor</b> mengunduh tabel ini (CSV).</p>
+  <div class="card"><div class="table-wrap"><table><thead><tr><th>Kode</th><th>Provinsi</th><th>Sekolah</th><th>Akred. A</th><th>% A</th><th>PT</th><th>PTN</th><th>PTS</th><th>PTA</th><th>PTK</th></tr></thead><tbody>
+  ${act.map(r => `<tr${r.kode === STATE.provinsi ? ' class="highlighted"' : ''}><td>${r.kode}</td><td>${esc(r.provinsi)}</td><td>${r.sekolah.toLocaleString('id-ID')}</td><td>${r.akredA.toLocaleString('id-ID')}</td><td>${r.pctA === null ? '—' : fmt(r.pctA)}</td><td>${r.pt ?? '…'}</td><td>${r.ptn ?? '…'}</td><td>${r.pts ?? '…'}</td><td>${r.pta ?? '…'}</td><td>${r.ptk ?? '…'}</td></tr>`).join('')}
+  </tbody></table></div>${srcNote(schoolSrc() + ' · ' + SRC.kampus + ' · ' + SRC.wilayah)}</div>`;
+}
+function exportCSV() {
+  const rows = explorerRows();
+  if (!rows) { alert('Data per provinsi belum dimuat. Buka Data Explorer dan muat data live terlebih dahulu.'); return; }
+  const header = ['kode_provinsi', 'provinsi', 'jumlah_sekolah', 'akreditasi_A', 'persen_akreditasi_A', 'jumlah_pt', 'ptn', 'pts', 'pta', 'ptk'];
+  const csv = [header, ...rows.map(r => [r.kode, `"${r.provinsi}"`, r.sekolah, r.akredA, r.pctA === null ? '' : r.pctA.toFixed(2), r.pt ?? '', r.ptn ?? '', r.pts ?? '', r.pta ?? '', r.ptk ?? ''])].map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }));
+  a.download = `edudata_live_${STATE.jenjang}_${STATE.status}_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* ============================================================
+   RENDERERS — halaman BELUM LIVE (angka contoh berlabel jelas)
+   ============================================================ */
+function wrapDummy(html, sources) { return notLiveBanner(sources) + `<div class="dummy-zone">${html}</div>`; }
+function renderPartisipasi() {
+  let entries = Object.entries(DATA.partisipasiByJenjang);
+  if (STATE.jenjang !== 'all') entries = entries.filter(([k]) => k === STATE.jenjang);
+  return `<h2 class="page-title">Partisipasi & Akses ${dummyBadge()}</h2><p class="page-subtitle">APK & APM per jenjang.</p>` + wrapDummy(`
+  <div class="grid grid-2">
+    <div class="card"><div class="card-title">APK ${dummyBadge()}</div>${entries.length ? barChart(entries.map(([k, v]) => ({ label: k, value: v.apk, color: v.apk >= 95 ? '#059669' : v.apk >= 80 ? '#d97706' : '#dc2626' })), { max: 110, unit: '%' }) : '<div class="empty-state">—</div>'}</div>
+    <div class="card"><div class="card-title">APM ${dummyBadge()}</div>${entries.length ? barChart(entries.map(([k, v]) => ({ label: k, value: v.apm, color: '#1e40af' })), { max: 110, unit: '%' }) : '<div class="empty-state">—</div>'}</div>
+  </div>
+  <div class="card mt-16"><div class="card-title">Tabel Provinsi (21 provinsi contoh) ${dummyBadge()}</div><div class="table-wrap"><table><thead><tr><th>Provinsi</th><th>APK</th><th>APM</th><th>Gap</th></tr></thead><tbody>
+  ${[...DATA.provinces].sort((a, b) => b.apk - a.apk).map(p => `<tr><td>${p.name}</td><td>${fmt(p.apk)}%</td><td>${fmt(p.apm)}%</td><td>${fmt(p.apk - p.apm)}</td></tr>`).join('')}
+  </tbody></table></div></div>`, 'BPS (Susenas) & Dapodik');
+}
+function renderMutu() {
+  const k = DATA.mutuKompetensi;
+  const d = (x) => `<div class="donut-wrap">${donutChart([{ value: x.dasar, color: '#dc2626' }, { value: x.menengah, color: '#d97706' }, { value: x.mahir, color: '#059669' }])}<div class="donut-legend"><div class="legend-item"><div class="legend-dot" style="background:#dc2626"></div>Dasar: ${x.dasar}%</div><div class="legend-item"><div class="legend-dot" style="background:#d97706"></div>Menengah: ${x.menengah}%</div><div class="legend-item"><div class="legend-dot" style="background:#059669"></div>Mahir: ${x.mahir}%</div></div></div>`;
+  return `<h2 class="page-title">Mutu Pembelajaran ${dummyBadge()}</h2><p class="page-subtitle">Hasil belajar.</p>` + wrapDummy(`<div class="grid grid-2"><div class="card"><div class="card-title">Numerasi ${dummyBadge()}</div>${d(k.numerasi)}</div><div class="card"><div class="card-title">Literasi ${dummyBadge()}</div>${d(k.literasi)}</div></div>`, 'Rapor Pendidikan / Asesmen Nasional');
+}
+function renderGuru() {
+  const gk = DATA.guruKualifikasi;
+  return `<h2 class="page-title">Guru & Tendik ${dummyBadge()}</h2><p class="page-subtitle">SDM dikdasmen.</p>` + wrapDummy(`
+  <div class="grid grid-2">
+    <div class="card"><div class="card-title">Kualifikasi Guru ${dummyBadge()}</div>${barChart([{ label: 'S1', value: gk.S1, color: '#059669' }, { label: 'S2', value: gk.S2, color: '#3b82f6' }, { label: 'S3', value: gk.S3, color: '#1e40af' }, { label: 'Diploma', value: gk['Diploma'], color: '#d97706' }, { label: 'SMA', value: gk.SMA, color: '#dc2626' }], { max: 100, unit: '%' })}</div>
+    <div class="card"><div class="card-title">Rasio per Jenjang ${dummyBadge()}</div>${barChart([{ label: 'SD/MI', value: 15, color: '#059669' }, { label: 'SMP/MTs', value: 13, color: '#059669' }, { label: 'SMA/MA', value: 12, color: '#059669' }, { label: 'SMK', value: 11, color: '#059669' }], { max: 20 })}</div>
+  </div>
+  <div class="card mt-16"><div class="card-title">Rasio per Provinsi ${dummyBadge()}</div>${heatmap('rasio', { invert: true, unit: ':1' })}</div>`, 'Dapodik (data guru & tendik)');
+}
+function renderPendanaan() {
+  const a = DATA.anggaran;
+  return `<h2 class="page-title">Pendanaan & Efisiensi ${dummyBadge()}</h2><p class="page-subtitle">Anggaran vs capaian.</p>` + wrapDummy(`
+  <div class="grid grid-3">
+    <div class="card"><div class="kpi-label">APBN 2025 (contoh)</div><div class="kpi-value">Rp ${fmt(a.total, 1)} T</div></div>
+    <div class="card"><div class="kpi-label">Anggaran/Siswa (contoh)</div><div class="kpi-value">Rp ${fmt(a.perSiswa, 1)} jt</div></div>
+    <div class="card"><div class="kpi-label">Realisasi (contoh)</div><div class="kpi-value">${fmt(a.realisasi, 1)}%</div></div>
+  </div>
+  <div class="card mt-16"><div class="card-title">Anggaran/Siswa vs Skor AN ${dummyBadge()}</div>
+    <svg viewBox="0 0 500 300" style="width:100%;height:280px"><line x1="50" y1="250" x2="480" y2="250" stroke="#cbd5e1"/><line x1="50" y1="30" x2="50" y2="250" stroke="#cbd5e1"/><text x="260" y="285" text-anchor="middle" font-size="11" fill="#64748b">Anggaran per siswa (juta Rp)</text><text x="15" y="140" text-anchor="middle" font-size="11" fill="#64748b" transform="rotate(-90 15 140)">Skor AN</text>
+    ${DATA.provinces.map(p => { const x = 50 + ((p.anggaran - 8) / (20 - 8)) * 430, y = 250 - ((p.an - 55) / (80 - 55)) * 220; return `<circle cx="${x}" cy="${y}" r="5" fill="${p.an >= 67 ? '#059669' : p.an >= 63 ? '#d97706' : '#dc2626'}" opacity="0.9"><title>${p.name}</title></circle>`; }).join('')}
+    </svg></div>`, 'Kemenkeu (APBN/APBD), NPD, Rapor Pendidikan');
+}
+function renderATS() {
+  const a = DATA.ats;
+  return `<h2 class="page-title">Anak Tidak Sekolah ${dummyBadge()}</h2><p class="page-subtitle">Snapshot contoh.</p>` + wrapDummy(`
+  <div class="grid grid-4">${[['Total ATS', a.total], ['BPB', a.bpb], ['DO', a.do], ['LTM', a.ltm]].map(([l, v]) => kpiCard(l, fmt(v / 1e6, 2), 'contoh', 'status-bad', 'jt')).join('')}</div>
+  <div class="card mt-16"><div class="card-title">Konsentrasi ATS ${dummyBadge()}</div>${heatmap('ats', { invert: true, unit: '%' })}</div>`, 'Pusdatin Kemendikdasmen (data ATS), BPS');
+}
+function renderPISA() {
+  const p = DATA.pisa;
+  return `<h2 class="page-title">Benchmark PISA ${dummyBadge()}</h2><p class="page-subtitle">Angka contoh.</p>` + wrapDummy(`
+  <div class="grid grid-3">${['matematika', 'membaca', 'sains'].map(sub => `<div class="card"><div class="card-title">${sub.charAt(0).toUpperCase() + sub.slice(1)} ${dummyBadge()}</div>${barChart([{ label: 'Indonesia', value: p.indonesia[sub], color: '#dc2626' }, { label: 'OECD', value: p.oecd[sub], color: '#1e40af' }], { max: 500 })}<div class="kpi-target mt-16" style="text-align:center">Gap: ${p.oecd[sub] - p.indonesia[sub]} poin</div></div>`).join('')}</div>
+  <div class="card mt-16"><div class="card-title">Tren PISA ${dummyBadge()}</div>${lineChart(p.trenIndo.matematika, ['2012', '2015', '2018', '2022', '2025'], { color: '#dc2626', yMin: 350, yMax: 410 })}</div>`, 'OECD PISA');
+}
+
+/* ============================================================
+   FILTER BINDING & INIT
+   ============================================================ */
+function updateFilterIndicator() {
+  const parts = [];
+  if (STATE.provinsi !== 'all') parts.push(regionLabel());
+  if (STATE.jenjang !== 'all') parts.push(STATE.jenjang);
+  if (STATE.status !== 'all') parts.push(STATE.status);
+  const el = document.getElementById('filter-indicator'); if (!el) return;
+  if (!parts.length) el.style.display = 'none'; else { el.style.display = 'inline-flex'; el.textContent = '🔍 ' + parts.join(' · '); }
+}
+async function fillKabupaten() {
+  const sel = document.getElementById('filter-kabupaten');
+  sel.innerHTML = '<option value="all">Semua Kab/Kota</option>';
+  sel.disabled = true;
+  if (STATE.provinsi === 'all') return;
+  try { (await loadKabupaten(STATE.provinsi)).forEach(k => { const o = document.createElement('option'); o.value = k.id; o.textContent = k.name; sel.appendChild(o); }); sel.disabled = false; } catch (e) { console.warn(e); }
+}
+function onFilterChange() { updateFilterIndicator(); renderAllPages(true); refreshData(); }
+function bindFilters() {
+  const s = { provinsi: document.getElementById('filter-provinsi'), kabupaten: document.getElementById('filter-kabupaten'), jenjang: document.getElementById('filter-jenjang'), status: document.getElementById('filter-status') };
+  s.provinsi.addEventListener('change', async e => { STATE.provinsi = e.target.value; STATE.kabupaten = 'all'; await fillKabupaten(); onFilterChange(); });
+  s.kabupaten.addEventListener('change', e => { STATE.kabupaten = e.target.value; onFilterChange(); });
+  s.jenjang.addEventListener('change', e => { STATE.jenjang = e.target.value; onFilterChange(); });
+  s.status.addEventListener('change', e => { STATE.status = e.target.value; onFilterChange(); });
+  document.getElementById('btn-reset').addEventListener('click', async () => {
+    Object.assign(STATE, { provinsi: 'all', kabupaten: 'all', jenjang: 'all', status: 'all' });
+    s.provinsi.value = 'all'; s.jenjang.value = 'all'; s.status.value = 'all'; await fillKabupaten(); onFilterChange();
+  });
+  document.getElementById('btn-export').addEventListener('click', exportCSV);
+}
+const PAGE_TITLES = { beranda: 'Beranda', partisipasi: 'Partisipasi', mutu: 'Mutu', pemerataan: 'Pemerataan', guru: 'Guru & Tendik', pendanaan: 'Pendanaan', ats: 'ATS', pisa: 'PISA', dikti: 'Pendidikan Tinggi', earlywarning: 'Early Warning', sekolah: 'Profil Sekolah', explorer: 'Data Explorer', 'analisis-data': 'Analisis Data', 'analisis-predefined': 'Pre-defined Analysis', 'analisis-lanjut': 'Analisis Lanjut' };
+const RENDERERS = { beranda: renderBeranda, partisipasi: renderPartisipasi, mutu: renderMutu, pemerataan: renderPemerataan, guru: renderGuru, pendanaan: renderPendanaan, ats: renderATS, pisa: renderPISA, dikti: renderDikti, earlywarning: renderEarlyWarning, explorer: renderExplorer };
+let sekolahRendered = false;
+function renderAllPages(filterChanged = false) {
+  Object.keys(RENDERERS).forEach(id => { const el = document.getElementById('page-' + id); if (el) { try { el.innerHTML = RENDERERS[id](); } catch (e) { el.innerHTML = errBox(e); console.error(e); } } });
+  if (sekolahRendered && filterChanged) { SK.page = 1; loadSekolahList(); }
+}
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const page = document.getElementById('page-' + id); if (page) page.classList.add('active');
+  const nav = document.querySelector(`.nav-item[data-page="${id}"]`); if (nav) nav.classList.add('active');
+  document.getElementById('topbar-title').textContent = PAGE_TITLES[id] || id;
+  if (id === 'sekolah' && !sekolahRendered) { page.innerHTML = renderSekolah(); bindSekolah(); sekolahRendered = true; }
+  else if (id === 'sekolah' && MAP) setTimeout(() => MAP.invalidateSize(), 50);
+  if (id === 'analisis-data' && !document.getElementById('analisis-data-chat')) renderAnalisisData();
+  if (id === 'analisis-predefined' && !document.getElementById('predefined-chat')) renderPredefined();
+  if (id === 'analisis-lanjut' && !document.getElementById('analisis-lanjut-chat')) renderAnalisisLanjut();
+  if (location.hash.slice(1) !== id) history.replaceState(null, '', '#' + id);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+document.addEventListener('DOMContentLoaded', async () => {
+  document.querySelectorAll('.nav-item').forEach(nav => nav.addEventListener('click', () => showPage(nav.dataset.page)));
+  bindFilters();
+  renderAllPages();
+  const initial = location.hash.slice(1);
+  if (initial && PAGE_TITLES[initial]) showPage(initial);
+  const status = document.getElementById('live-status');
+  try {
+    await loadProvinces();
+    const sel = document.getElementById('filter-provinsi');
+    LIVE.provinces.forEach(p => { const o = document.createElement('option'); o.value = p.id; o.textContent = p.name; sel.appendChild(o); });
+    status.textContent = '● Live · API Indonesia';
+  } catch (e) {
+    status.textContent = '⚠️ ' + (e.message || 'gagal memuat');
+    document.getElementById('page-beranda').insertAdjacentHTML('afterbegin', errBox('Gagal memuat data live: ' + e.message));
+    return;
+  }
+  refreshData();
+});
+
+</script>
+</body>
+</html>
