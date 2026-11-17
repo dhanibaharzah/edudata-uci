@@ -67,7 +67,8 @@ async function proxy(request, env, ctx, url) {
   const m = mem.get(cacheKey);
   if (m && m.exp > Date.now()) return new Response(m.body, { headers: hdr(n.rule.ttl, 'MEM', m.status) });
 
-  const cached = await env.CACHE.getWithMetadata(cacheKey);
+  let cached = { value: null };
+  try { cached = await env.CACHE.getWithMetadata(cacheKey); } catch (e) { console.log(JSON.stringify({ evt: 'kv_read_fail' })); }
   if (cached.value !== null) {
     remember(cacheKey, cached.value, 200);
     return new Response(cached.value, { headers: hdr(n.rule.ttl, 'KV', 200) });
@@ -111,22 +112,26 @@ async function proxy(request, env, ctx, url) {
   return new Response(body, { headers: hdr(n.rule.ttl, 'MISS', 200) });
 }
 
-let ISOLATE = null; // dibuat saat request pertama (random tidak boleh di global scope)
 const isoCount = {}; // tanggal -> jumlah panggilan upstream oleh isolate ini
+// Hitungan harian disimpan di SATU key KV per hari (1 read per panggilan, 1 write per upstream call).
+// Semua akses KV dibungkus try/catch: bila kuota KV harian habis, dashboard tetap jalan (fail-open ke hitungan isolate).
 async function usedToday(env) {
-  let total = 0, cursor;
-  do {
-    const r = await env.CACHE.list({ prefix: 'budget:' + today() + ':', cursor });
-    for (const k of r.keys) total += +(k.metadata?.n || 0);
-    cursor = r.list_complete ? null : r.cursor;
-  } while (cursor);
-  return Math.max(total, isoCount[today()] || 0);
+  const local = isoCount[today()] || 0;
+  try {
+    const v = await env.CACHE.get('budget:' + today());
+    return Math.max(+(v || 0), local);
+  } catch (e) {
+    console.log(JSON.stringify({ evt: 'kv_budget_read_fail', msg: String(e).slice(0, 120) }));
+    return local;
+  }
 }
 async function bumpBudget(env) {
   const d = today();
-  if (!ISOLATE) ISOLATE = crypto.randomUUID().slice(0, 8);
   isoCount[d] = (isoCount[d] || 0) + 1;
-  try { await env.CACHE.put(`budget:${d}:${ISOLATE}`, '', { expirationTtl: 3 * DAY, metadata: { n: isoCount[d] } }); } catch {}
+  try {
+    const cur = +((await env.CACHE.get('budget:' + d)) || 0);
+    await env.CACHE.put('budget:' + d, String(Math.max(cur, isoCount[d] - 1) + 1), { expirationTtl: 3 * DAY });
+  } catch {}
 }
 
 function remember(k, body, status) {
@@ -244,6 +249,16 @@ function localLimit(ip) {
 
 export default {
   async fetch(request, env, ctx) {
+    try { return await handle(request, env, ctx); }
+    catch (e) {
+      console.log(JSON.stringify({ evt: 'unhandled', msg: String(e?.message || e).slice(0, 200) }));
+      return json({ success: false, error: 'Kesalahan server sementara. Coba lagi sebentar.', code: 'SERVER_ERROR' }, 500);
+    }
+  },
+};
+
+async function handle(request, env, ctx) {
+  {
     const url = new URL(request.url);
     if (url.pathname === '/__setup') return setup(request, env);
     if (url.pathname.startsWith('/api/')) {
@@ -270,5 +285,5 @@ export default {
       return proxy(request, env, ctx, url);
     }
     return new Response('Not found', { status: 404 });
-  },
-};
+  }
+}
